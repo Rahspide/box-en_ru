@@ -1,6 +1,6 @@
 #!/system/bin/sh
 
-# 变量定义
+# Variable definitions
 box_dir="/data/adb/box"
 box_run="${box_dir}/run"
 box_pid="${box_run}/box.pid"
@@ -10,13 +10,13 @@ run_as_su() {
 }
 
 stop_service() {
-    echo "服务正在关闭..."
+    echo "Service is shutting down..."
     run_as_su "${box_dir}/scripts/box.iptables disable"
     run_as_su "${box_dir}/scripts/box.service stop"
 }
 
 start_service() {
-    echo "服务正在启动，请稍候..."
+    echo "Service is starting, please wait..."
     run_as_su "${box_dir}/scripts/box.service start"
     run_as_su "${box_dir}/scripts/box.iptables enable"
 }
