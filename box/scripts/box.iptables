@@ -8,7 +8,7 @@ runtime_iptables_env="${box_run_state}/runtime.iptables.env"
 fwmark="16777216/16777216"
 table="2024"
 pref="100"
-# 使用 iptables 规则禁用或启用 QUIC。注意，这可能导致部分网站无法访问。
+# Использует правила iptables для отключения или включения QUIC. Внимание: это может привести к недоступности некоторых сайтов.
 quic=${quic:-"enable"}
 mihomo_dns_forward=${mihomo_dns_forward:-"enable"}
 proxy_tcp=${proxy_tcp:-"true"}
@@ -81,8 +81,8 @@ ensure_rule_append() {
   local table_name="$1"
   local chain_name="$2"
   shift 2
-  # 对自定义链（每次启动都会 flush）跳过 -C 检查，加速启动。
-  # 注意：不要对内置链跳过检查，否则会导致规则重复累积。
+  # Пропускает проверку -C для пользовательских цепочек (сбрасываются при каждом запуске) для ускорения старта.
+  # Внимание: не пропускайте проверку для встроенных цепочек, иначе правила будут накапливаться дублями.
   if is_box_custom_chain "${chain_name}"; then
     ${iptables} -t "${table_name}" -A "${chain_name}" "$@" >/dev/null 2>&1 || true
     return 0
@@ -96,7 +96,7 @@ ensure_rule_insert() {
   local table_name="$1"
   local chain_name="$2"
   shift 2
-  # 对自定义链（每次启动都会 flush）跳过 -C 检查，加速启动。
+  # Пропускает проверку -C для пользовательских цепочек (сбрасываются при каждом запуске) для ускорения старта.
   if is_box_custom_chain "${chain_name}"; then
     ${iptables} -t "${table_name}" -I "${chain_name}" "$@" >/dev/null 2>&1 || true
     return 0
@@ -223,13 +223,13 @@ runtime_save() {
 runtime_load() {
   [ -f "${runtime_iptables_env}" ] || return 1
   . "${runtime_iptables_env}"
-  log Debug "已加载 runtime 快照: ${runtime_iptables_env}"
+  log Debug "Загружен снимок состояния: ${runtime_iptables_env}"
   return 0
 }
 
 runtime_clear() {
   rm -f "${runtime_iptables_env}" >/dev/null 2>&1 || true
-  log Debug "已清理 runtime 快照: ${runtime_iptables_env}"
+  log Debug "Снимок состояния очищен: ${runtime_iptables_env}"
 }
 
 cap_has_target() {
@@ -274,25 +274,25 @@ probe_capabilities() {
   command -v ipset >/dev/null 2>&1 && cap_ipset="true"
   ip6_nat_supported && cap_ip6_nat="true"
 
-  log Debug "能力探测: TPROXY(v4=${cap_tproxy4}, v6=${cap_tproxy6}) socket_match=${cap_socket_match} ipset=${cap_ipset} ip6_nat=${cap_ip6_nat}"
+  log Debug "Проверка возможностей: TPROXY(v4=${cap_tproxy4}, v6=${cap_tproxy6}) socket_match=${cap_socket_match} ipset=${cap_ipset} ip6_nat=${cap_ip6_nat}"
 }
 
 log_context() {
-  log Info "运行上下文: mode=${network_mode}, bin=${bin_name}, ipv6=${ipv6}, dns_hijack=${dns_hijack_mode}"
-  log Info "运行上下文: ports(tproxy=${tproxy_port}, redir=${redir_port}, mihomo_dns=${mihomo_dns_port})"
-  log Info "运行上下文: flags(proxy_tcp=${proxy_tcp}, proxy_udp=${proxy_udp}, dns_tcp=${dns_hijack_tcp}, dns_udp=${dns_hijack_udp}, quic=${quic})"
-  log Info "运行上下文: cnip(total=${bypass_cn_ip}, v4=${bypass_cn_ip_v4}, v6=${bypass_cn_ip_v6})"
-  log Info "运行上下文: mac_filter(enable=${mac_filter}, mode=${mac_mode}, macs_count=${#macs_list[@]})"
+  log Info "Контекст выполнения: mode=${network_mode}, bin=${bin_name}, ipv6=${ipv6}, dns_hijack=${dns_hijack_mode}"
+  log Info "Контекст выполнения: ports(tproxy=${tproxy_port}, redir=${redir_port}, mihomo_dns=${mihomo_dns_port})"
+  log Info "Контекст выполнения: flags(proxy_tcp=${proxy_tcp}, proxy_udp=${proxy_udp}, dns_tcp=${dns_hijack_tcp}, dns_udp=${dns_hijack_udp}, quic=${quic})"
+  log Info "Контекст выполнения: cnip(total=${bypass_cn_ip}, v4=${bypass_cn_ip_v4}, v6=${bypass_cn_ip_v6})"
+  log Info "Контекст выполнения: mac_filter(enable=${mac_filter}, mode=${mac_mode}, macs_count=${#macs_list[@]})"
   if [ "${ap_list}" != "" ]; then
-    log Debug "接口 allow: ${ap_list[*]}"
+    log Debug "Разрешённые интерфейсы: ${ap_list[*]}"
   fi
   if [ "${ignore_ap_list}" != "" ]; then
-    log Debug "接口 ignore: ${ignore_ap_list[*]}"
+    log Debug "Игнорируемые интерфейсы: ${ignore_ap_list[*]}"
   fi
 }
 
 log_capabilities() {
-  log Info "能力: tproxy4=${cap_tproxy4}, tproxy6=${cap_tproxy6}, socket_match=${cap_socket_match}, ipset=${cap_ipset}, ip6_nat=${cap_ip6_nat}"
+  log Info "Возможности: tproxy4=${cap_tproxy4}, tproxy6=${cap_tproxy6}, socket_match=${cap_socket_match}, ipset=${cap_ipset}, ip6_nat=${cap_ip6_nat}"
 }
 
 apply_capability_downgrades() {
@@ -303,25 +303,25 @@ apply_capability_downgrades() {
   local _old_cn="${bypass_cn_ip}"
 
   if [[ "${network_mode}" == @(tproxy|enhance) ]] && [ "${cap_tproxy4}" != "true" ]; then
-    log Warning "降级: 内核不支持 TPROXY, network_mode ${network_mode} -> redirect"
+    log Warning "Понижение режима: ядро не поддерживает TPROXY, network_mode ${network_mode} -> redirect"
     network_mode="redirect"
   fi
 
   if [ "${dns_hijack_mode}" = "tproxy" ] && [ "${cap_tproxy4}" != "true" ]; then
-    log Warning "降级: 内核不支持 TPROXY, dns_hijack_mode tproxy -> redirect"
+    log Warning "Понижение режима: ядро не поддерживает TPROXY, dns_hijack_mode tproxy -> redirect"
     dns_hijack_mode="redirect"
   fi
 
   if [ "${bypass_cn_ip}" = "true" ] && [ "${cap_ipset}" != "true" ]; then
-    log Warning "降级: ipset 不可用, bypass_cn_ip true -> false"
+    log Warning "Понижение режима: ipset недоступен, bypass_cn_ip true -> false"
     bypass_cn_ip="false"
     bypass_cn_ip_v4="false"
     bypass_cn_ip_v6="false"
   fi
 
-  [ "${_old_mode}" != "${network_mode}" ] && log Info "最终 network_mode=${network_mode}"
-  [ "${_old_dns}" != "${dns_hijack_mode}" ] && log Info "最终 dns_hijack_mode=${dns_hijack_mode}"
-  [ "${_old_cn}" != "${bypass_cn_ip}" ] && log Info "最终 bypass_cn_ip=${bypass_cn_ip}"
+  [ "${_old_mode}" != "${network_mode}" ] && log Info "Итоговый network_mode=${network_mode}"
+  [ "${_old_dns}" != "${dns_hijack_mode}" ] && log Info "Итоговый dns_hijack_mode=${dns_hijack_mode}"
+  [ "${_old_cn}" != "${bypass_cn_ip}" ] && log Info "Итоговый bypass_cn_ip=${bypass_cn_ip}"
   log_capabilities
 }
 
@@ -368,23 +368,23 @@ case "${bin_name}" in
   "hysteria")
     case "${network_mode}" in
       redirect|tproxy|enhance)
-        # 支持的模式，无需操作
+        # Режим поддерживается, действий не требуется
         true
         ;;
       *)
-        log Warning "$bin_name 不支持 network_mode: $network_mode，已切换回 TProxy"
+        log Warning "$bin_name не поддерживает network_mode: $network_mode, выполнен откат к TProxy"
         sed -i 's/\(network_mode=\)\"[^\"]*\"/\1"tproxy"/g' ${settings}
         ;;
     esac
     ;;
   "xray" | "v2fly")
     if [[ "${network_mode}" != "tproxy" ]]; then
-      log Warning "$bin_name 不支持 network_mode: $network_mode，已切换回 TProxy"
+      log Warning "$bin_name не поддерживает network_mode: $network_mode, выполнен откат к TProxy"
       sed -i 's/\(network_mode=\)\"[^\"]*\"/\1"tproxy"/g' ${settings}
     fi
     ;;
   *)
-    log Error "<${bin_name}> 未知内核。"
+    log Error "<${bin_name}> Неизвестное ядро."
     exit 1
     ;;
 esac
@@ -392,11 +392,11 @@ esac
 box_etc() {
   case "${bin_name}" in
     mihomo)
-      log Debug "增强模式: $mihomo_enhanced_mode, fake-ip 段: $fake_ip_range, fake-ip6 段: ${fake_ip6_range:-none}, DNS 端口: $mihomo_dns_port, 模式: $mihomo_mode"
+      log Debug "Расширенный режим: $mihomo_enhanced_mode, диапазон fake-ip: $fake_ip_range, диапазон fake-ip6: ${fake_ip6_range:-none}, DNS-порт: $mihomo_dns_port, режим: $mihomo_mode"
       ;;
     sing-box)
       if [ -n "${fake_ip_range}" ] && [ "${bin_name}" = "sing-box" ]; then
-        log Debug "fake-ip 段: ${fake_ip_range}, ${fake_ip6_range}"
+        log Debug "Диапазон fake-ip: ${fake_ip_range}, ${fake_ip6_range}"
       fi
       ;;
     *) 
@@ -404,7 +404,7 @@ box_etc() {
       ;;
   esac
   if [[ "${network_mode}" == @(mixed|tun) ]]; then
-    log Info "TUN 设备: ($tun_device)"
+    log Info "TUN-устройство: ($tun_device)"
   fi
 }
 
@@ -412,9 +412,9 @@ bin_alive() {
   local PID=$(<"${box_pid}" 2>/dev/null)
   if ! kill -0 "$PID" >/dev/null; then
     log Error "$(<"${box_run}/${bin_name}.log")"
-    log Error "${bin_name} 服务未运行。"
-    log Error "请检查 ${bin_name}.log 获取更多信息。"
-    log Error "正在清理僵尸进程 $PID"
+    log Error "Служба ${bin_name} не запущена."
+    log Error "Проверьте ${bin_name}.log для получения дополнительной информации."
+    log Error "Очистка зависшего процесса $PID"
     for bin in "${bin_list[@]}"; do
       killall -15 "${bin}" >/dev/null 2>&1 || busybox pkill -15 "${bin}" >/dev/null 2>&1
     done
@@ -447,7 +447,7 @@ disable_ipv6() {
   sysctl -w net.ipv6.conf.default.disable_ipv6=1
   sysctl -w net.ipv6.conf.wlan0.disable_ipv6=1
 
-  # 新增：彻底阻断 IPv6
+  # Добавление: полная блокировка IPv6
   ip -6 rule show pref "${pref}" 2>/dev/null | busybox grep -q "unreachable" || ip -6 rule add unreachable pref "${pref}"
 } >/dev/null 2>&1
 
@@ -461,10 +461,10 @@ ipv6_enable() {
   sysctl -w net.ipv6.conf.default.disable_ipv6=0
   sysctl -w net.ipv6.conf.wlan0.disable_ipv6=0
 
-  # 删除：彻底阻断 IPv6
+  # Удаление: полная блокировка IPv6
   ip -6 rule show pref "${pref}" 2>/dev/null | busybox grep -q "unreachable" && ip -6 rule del unreachable pref "${pref}" >/dev/null 2>&1 || true
 
-  # 新增：阻止所有 IPv6 的 53 端口 UDP 出站流量，防止 IPv6 DNS 泄漏
+  # Добавление: блокировка всего исходящего UDP-трафика IPv6 на порту 53 для предотвращения утечки IPv6 DNS
   iptables="$IP6V" && ensure_rule_append filter OUTPUT -p udp --destination-port 53 -j DROP
 } >/dev/null 2>&1
 
@@ -487,7 +487,7 @@ intranet=(
   255.255.255.0/24
   255.255.255.255/32
 )
-# 100.0.0.0/8 的使用是中国电信运营商的错误，建议改回 100.64.0.0/10。
+# Использование 100.0.0.0/8 является ошибкой китайских телеком-операторов; рекомендуется вернуть 100.64.0.0/10.
 intranet+=($(ip -4 a | busybox awk '/inet/ {print $2}' | busybox grep -vE "^127.0.0.1"))
 
 intranet6=(
@@ -507,16 +507,16 @@ intranet6=(
 )
 intranet6+=($(ip -6 a | busybox awk '/inet6/ {print $2}' | busybox grep -vE "^fe80|^::1|^fd00"))
 
-# IPv6 NAT 支持探测
+# Проверка поддержки IPv6 NAT
 ip6_nat_supported() {
   ip6tables -t nat -L >/dev/null 2>&1
 }
 
-# CN ipset 载入/清理
+# Загрузка/очистка CN ipset
 setup_cn_ipset() {
-  [ "${bypass_cn_ip}" = "true" ] || { log Debug "CN 分流未启用"; return 0; }
+  [ "${bypass_cn_ip}" = "true" ] || { log Debug "CN-обход не включён"; return 0; }
   if ! command -v ipset >/dev/null 2>&1; then
-    log Warning "ipset 不可用，跳过 CN 分流"
+    log Warning "ipset недоступен, пропуск CN-обхода"
     return 1
   fi
   # IPv4
@@ -526,12 +526,12 @@ setup_cn_ipset() {
       echo "flush cnip"
       awk '!/^[[:space:]]*#/ && NF > 0 {printf "add cnip %s\n", $0}' "${cn_ip_file}"
     } | ipset restore -exist 2>/dev/null; then
-      log Info "已加载中国大陆 IPv4 段到 ipset: cnip"
+      log Info "Загружены диапазоны IPv4 материкового Китая в ipset: cnip"
     else
-      log Warning "加载 cnip 失败"
+      log Warning "Ошибка загрузки cnip"
     fi
   else
-    log Debug "跳过 IPv4 ipset 载入（未启用或文件不存在）"
+    log Debug "Пропуск загрузки IPv4 ipset (не включено или файл не найден)"
   fi
   # IPv6
   if [ "${ipv6}" = "true" ]; then
@@ -541,12 +541,12 @@ setup_cn_ipset() {
         echo "flush cnip6"
         awk '!/^[[:space:]]*#/ && NF > 0 {printf "add cnip6 %s\n", $0}' "${cn_ipv6_file}"
       } | ipset restore -exist 2>/dev/null; then
-        log Info "已加载中国大陆 IPv6 段到 ipset: cnip6"
+        log Info "Загружены диапазоны IPv6 материкового Китая в ipset: cnip6"
       else
-        log Warning "加载 cnip6 失败"
+        log Warning "Ошибка загрузки cnip6"
       fi
     else
-      log Debug "跳过 IPv6 ipset 载入（未启用或文件不存在）"
+      log Debug "Пропуск загрузки IPv6 ipset (не включено или файл не найден)"
     fi
   fi
 }
@@ -580,7 +580,7 @@ forward() {
 } >/dev/null 2>&1
 
 start_redirect() {
-  # IPv6: 若当前在 ip6tables 环境，且配置为 redirect，并且内核支持 IPv6 NAT，则创建 NAT_DNS_HIJACK6
+  # IPv6: если текущая среда ip6tables, настроена redirect и ядро поддерживает IPv6 NAT — создать NAT_DNS_HIJACK6
   if [ "${iptables}" = "$IP6V" ] && [ "${dns_hijack_mode}" = "redirect" ] && ip6_nat_supported; then
     local _dns_port6
     _dns_port6="${mihomo_dns_port}"; [ -z "${_dns_port6}" ] && _dns_port6="1053"
@@ -592,7 +592,7 @@ start_redirect() {
   fi
 
   if [ "${iptables}" = "$IPV" ]; then
-    # DNS 劫持策略（redirect：创建 NAT_DNS_HIJACK；disable：不处理；其他：保留 mihomo 的 UDP DNS 重定向）
+    # Политика перехвата DNS (redirect: создать NAT_DNS_HIJACK; disable: без действий; иное: сохранить UDP DNS-перенаправление mihomo)
     if [ "${dns_hijack_mode}" = "redirect" ]; then
       local _dns_port
       _dns_port="${mihomo_dns_port}"
@@ -604,12 +604,12 @@ start_redirect() {
         ensure_rule_append nat BOX_EXTERNAL -p udp --dport 53 -j REDIRECT --to-ports "${mihomo_dns_port}"
         ensure_rule_append nat BOX_LOCAL -p udp --dport 53 -j REDIRECT --to-ports "${mihomo_dns_port}"
       fi
-    # 其他类型的入站应在此处添加以接收 DNS 流量而不是嗅探
+    # Другие типы входящих подключений следует добавить здесь для получения DNS-трафика вместо сниффинга
     # ${iptables} -t nat -A BOX_EXTERNAL -p udp --dport 53 -j REDIRECT --to-ports "${redir_port}"
     # ${iptables} -t nat -A BOX_LOCAL -p udp --dport 53 -j REDIRECT --to-ports "${redir_port}"
     fi
 
-    # 修复 ICMP（ping），这不能保证 ping 结果有效，仅保证有返回
+    # Исправление ICMP (ping); не гарантирует корректный результат ping, только гарантирует ответ
     # if [[ "${bin_name}" == @(mihomo|sing-box) ]]; then
       # if [ -n "${fake_ip_range}" ]; then
         # ${iptables} -t nat -A BOX_EXTERNAL -d "${fake_ip_range}" -p icmp -j DNAT --to-destination 127.0.0.1
@@ -623,7 +623,7 @@ start_redirect() {
       ensure_rule_append nat BOX_EXTERNAL -d ${subnet} -j RETURN
       ensure_rule_append nat BOX_LOCAL -d ${subnet} -j RETURN
     done
-    # 中国大陆 IP 分流（IPv4 NAT）
+    # Обход IP материкового Китая (IPv4 NAT)
     if [ "${bypass_cn_ip}" = "true" ] && [ "${bypass_cn_ip_v4}" = "true" ] && command -v ipset >/dev/null 2>&1; then
       ensure_rule_append nat BOX_EXTERNAL -m set --match-set cnip dst -j RETURN
       ensure_rule_append nat BOX_LOCAL -m set --match-set cnip dst -j RETURN
@@ -632,15 +632,15 @@ start_redirect() {
     ensure_rule_append nat BOX_EXTERNAL -j LOCAL_IP_V4
     ensure_rule_append nat BOX_LOCAL -j LOCAL_IP_V4
 
-    # 在允许列表之前优先跳过指定接口
+    # Пропускать указанные интерфейсы до применения списка разрешений
     if [ "${ignore_ap_list}" != "" ]; then
       for ignore in "${ignore_ap_list[@]}"; do
         ensure_rule_append nat BOX_EXTERNAL -i "${ignore}" -j RETURN
       done
-      [ ${network_mode} = "enhance" ] || log Info "${ignore_ap_list[*]} 入站接口已忽略透明代理。"
+      [ ${network_mode} = "enhance" ] || log Info "Входящие интерфейсы ${ignore_ap_list[*]} исключены из прозрачного проксирования."
     fi
 
-    # 对非环回接口的所有TCP流量进行重定向，避免硬编码接口名称
+    # Перенаправление всего TCP-трафика на не-loopback интерфейсах, без жёсткой привязки к именам интерфейсов
     if [ "${proxy_tcp}" = "true" ]; then
       ensure_rule_append nat BOX_EXTERNAL -p tcp -i lo -j REDIRECT --to-ports "${redir_port}"
     fi
@@ -659,7 +659,7 @@ start_redirect() {
                 _mac_added="true"
               done
               if [ "${_mac_added}" != "true" ]; then
-                [ ${network_mode} = "enhance" ] || log Warning "热点接口 ${ap}：MAC 白名单已启用但列表为空/无有效项，将不代理该接口的客户端流量"
+                [ ${network_mode} = "enhance" ] || log Warning "Интерфейс точки доступа ${ap}: белый список MAC включён, но список пуст/нет валидных записей — клиентский трафик этого интерфейса проксироваться не будет"
               fi
             else
               for mac_item in "${macs_list[@]}"; do
@@ -678,12 +678,12 @@ start_redirect() {
 
       if [ "${mac_filter}" = "true" ]; then
         if [ "${mac_mode}" = "whitelist" ]; then
-          [ ${network_mode} = "enhance" ] || log Info "${ap_list[*]} 热点 MAC 白名单透明代理已启用。"
+          [ ${network_mode} = "enhance" ] || log Info "Прозрачное проксирование с белым списком MAC для точек доступа ${ap_list[*]} включено."
         else
-          [ ${network_mode} = "enhance" ] || log Info "${ap_list[*]} 热点 MAC 黑名单透明代理已启用。"
+          [ ${network_mode} = "enhance" ] || log Info "Прозрачное проксирование с чёрным списком MAC для точек доступа ${ap_list[*]} включено."
         fi
       else
-        [ ${network_mode} = "enhance" ] || log Info "${ap_list[*]} 透明代理。"
+        [ ${network_mode} = "enhance" ] || log Info "Прозрачный прокси: ${ap_list[*]}."
       fi
     fi
 
@@ -695,18 +695,18 @@ start_redirect() {
     case "${proxy_mode}" in
       core)
         ensure_rule_append nat BOX_LOCAL -p tcp -j REDIRECT --to-ports "${redir_port}"
-        [ ${network_mode} = "enhance" ] || log Info "核心模式：所有应用透明代理。"
+        [ ${network_mode} = "enhance" ] || log Info "Режим ядра: все приложения проксируются прозрачно."
         ;;
       blacklist|black)
         if [ -z "$(cat "${uid_list}")" ] ; then
           ensure_rule_append nat BOX_LOCAL -p tcp -j REDIRECT --to-ports "${redir_port}"
-          [ ${network_mode} = "enhance" ] || log Info "所有应用透明代理。"
+          [ ${network_mode} = "enhance" ] || log Info "Все приложения проксируются прозрачно."
         else
           while read -r appid; do
             ensure_rule_append nat BOX_LOCAL -m owner --uid-owner "${appid}" -j RETURN
           done < "${uid_list}"
           ensure_rule_append nat BOX_LOCAL -p tcp -j REDIRECT --to-ports "${redir_port}"
-          [ ${network_mode} = "enhance" ] || log Info "代理模式: ${proxy_mode} (${packages_list[*]}) 不透明代理。"
+          [ ${network_mode} = "enhance" ] || log Info "Режим прокси: ${proxy_mode} (${packages_list[*]}) — без проксирования."
         fi
 
         if [ "${gid_list}" != "" ] ; then
@@ -714,34 +714,34 @@ start_redirect() {
             ensure_rule_append nat BOX_LOCAL -m owner --gid-owner ${gid} -j RETURN
           done
           [ ${network_mode} = "enhance" ] || {
-            [ "${iptables}" = "$IPV" ] &&  log Info "代理模式: ${proxy_mode}, GID (${gid_list[*]}) 不透明代理。"
+            [ "${iptables}" = "$IPV" ] &&  log Info "Режим прокси: ${proxy_mode}, GID (${gid_list[*]}) — без проксирования."
           }
         fi
         ;;
       whitelist|white)
         if [ -z "$(cat "${uid_list}")" ] ; then
           ensure_rule_append nat BOX_LOCAL -p tcp -j REDIRECT --to-ports "${redir_port}"
-          [ ${network_mode} = "enhance" ] || log Info "所有应用透明代理。"
+          [ ${network_mode} = "enhance" ] || log Info "Все приложения проксируются прозрачно."
         else
           while read -r appid; do
             ensure_rule_append nat BOX_LOCAL -p tcp -m owner --uid-owner "${appid}" -j REDIRECT --to-ports "${redir_port}"
           done < "${uid_list}"
           ensure_rule_append nat BOX_LOCAL -p tcp -m owner --uid-owner 0 -j REDIRECT --to-ports "${redir_port}"
           ensure_rule_append nat BOX_LOCAL -p tcp -m owner --uid-owner 1052 -j REDIRECT --to-ports "${redir_port}"
-          [ ${network_mode} = "enhance" ] || log Info "代理模式: ${proxy_mode} (${packages_list[*]}) 透明代理。"
+          [ ${network_mode} = "enhance" ] || log Info "Режим прокси: ${proxy_mode} (${packages_list[*]}) — прозрачное проксирование."
         fi
 
         if [ "${gid_list}" != "" ] ; then
           for gid in ${gid_list[@]} ; do
             ensure_rule_append nat BOX_LOCAL -p tcp -m owner --gid-owner ${gid} -j REDIRECT --to-ports ${redir_port}
           done
-          [ ${network_mode} = "enhance" ] || [ "${iptables}" = "$IPV" ] && log Info "代理模式: ${proxy_mode}, GID (${gid_list[*]}) 透明代理。"
+          [ ${network_mode} = "enhance" ] || [ "${iptables}" = "$IPV" ] && log Info "Режим прокси: ${proxy_mode}, GID (${gid_list[*]}) — прозрачное проксирование."
         fi
         ;;
       *)
-        log Warning "代理模式: ${proxy_mode} 配置错误。"
+        log Warning "Режим прокси: ${proxy_mode} — ошибка конфигурации."
         ensure_rule_append nat BOX_LOCAL -p tcp -j REDIRECT --to-ports "${redir_port}"
-        [ ${network_mode} = "enhance" ] || log Info "所有应用透明代理。"
+        [ ${network_mode} = "enhance" ] || log Info "Все приложения проксируются прозрачно."
         ;;
     esac
   fi
@@ -786,7 +786,7 @@ stop_redirect() {
 
 start_tproxy() {
   if [ "${iptables}" = "$IP6V" ] && [ "${cap_tproxy6}" != "true" ]; then
-    [ "${ipv6}" = "true" ] && log Warning "未检测到 IPv6 TPROXY 支持，跳过 ip6tables TProxy 规则"
+    [ "${ipv6}" = "true" ] && log Warning "Поддержка IPv6 TPROXY не обнаружена, правила ip6tables TProxy пропущены"
     return 1
   fi
 
@@ -802,7 +802,7 @@ start_tproxy() {
 
   # ${iptables} -t mangle -A BOX_EXTERNAL -m mark --mark ${routing_mark} -j RETURN
 
-  # 跳过部分接口，注意：有些接口名为 r_ / oem / nm_ / qcom_，可能需要更复杂的处理
+  # Пропуск некоторых интерфейсов; внимание: некоторые называются r_ / oem / nm_ / qcom_ и могут требовать более сложной обработки
   # ${iptables} -t mangle -I BOX_EXTERNAL -i rmnet_data+ -j RETURN
   # ${iptables} -t mangle -I BOX_EXTERNAL -i ccmni+ -j RETURN
 
@@ -838,9 +838,9 @@ start_tproxy() {
       fi
   fi
 
-  # NAT DNS 劫持链在后续（本地防回环规则之后）统一创建，避免重复插入
+  # Цепочка перехвата NAT DNS создаётся позже (после правил защиты от локального зацикливания) для предотвращения дублирования
 
-  # 跳过已被 TProxy 处理的流量，若默认路由接口有公网 IP，省略这些规则会导致本地流量代理异常，可能拖慢全网
+  # Пропуск трафика, уже обработанного TProxy; если интерфейс маршрута по умолчанию имеет публичный IP, пропуск этих правил может вызвать аномалии в локальном проксировании и замедлить сеть
   # if [ "${cap_socket_match}" = "true" ]; then
   #   if [ ${network_mode} != "enhance" ] && [ "${proxy_tcp}" = "true" ]; then
   #     ensure_rule_append mangle BOX_EXTERNAL -p tcp -m socket --transparent -j MARK --set-xmark ${fwmark}
@@ -852,10 +852,10 @@ start_tproxy() {
   #     ensure_rule_append mangle BOX_EXTERNAL -m socket -j RETURN
   #   fi
   # else
-  #   [ "${iptables}" = "$IPV" ] && log Warning "未检测到 socket match，跳过部分优化规则（不影响基本功能）"
+  #   [ "${iptables}" = "$IPV" ] && log Warning "socket match не обнаружен, пропуск некоторых оптимизирующих правил (не влияет на базовую функциональность)"
   # fi
 
-  # 跳过内网，兼容性可用 su -c 'zcat /proc/config.gz | grep -i addrtype' 检查
+  # Пропуск интранета; для проверки совместимости используйте su -c 'zcat /proc/config.gz | grep -i addrtype'
   # ${iptables} -t mangle -A BOX_EXTERNAL -m addrtype --dst-type LOCAL -j RETURN
   if [ "${iptables}" = "$IPV" ]; then
     for subnet in ${intranet[@]} ; do
@@ -865,7 +865,7 @@ start_tproxy() {
     [ "${bypass_cn_ip}" = "true" ] && [ "${bypass_cn_ip_v4}" = "true" ] && command -v ipset >/dev/null 2>&1 && ensure_rule_append mangle BOX_EXTERNAL -m set --match-set cnip dst -j RETURN
     ensure_rule_append mangle BOX_EXTERNAL -j LOCAL_IP_V4
   else
-    # 优先处理 IPv6 fake-ip，避免被 intranet6 (包含 fc00::/7) 提前放行
+    # Обработка IPv6 fake-ip в первую очередь во избежание досрочного пропуска через intranet6 (включает fc00::/7)
     if [ -n "${fake_ip6_range}" ] && [ "${bin_name}" = "mihomo" ]; then
       if [ ${network_mode} != "enhance" ] && [ "${proxy_tcp}" = "true" ]; then
         ensure_rule_append mangle BOX_EXTERNAL -p tcp -d "${fake_ip6_range}" -j TPROXY --on-port "${tproxy_port}" --tproxy-mark "${fwmark}"
@@ -882,12 +882,12 @@ start_tproxy() {
     ensure_rule_append mangle BOX_EXTERNAL -j LOCAL_IP_V6
   fi
 
-  # 在任何 TPROXY 规则之前优先生效，防止被后续 allow 接口（如 wlan+）覆盖
+  # Применять до любых правил TPROXY, чтобы не быть перекрытым последующими разрешёнными интерфейсами (например, wlan+)
   if [ "${ignore_ap_list}" != "" ]; then
     for ignore in ${ignore_ap_list[@]} ; do
       ensure_rule_append mangle BOX_EXTERNAL -i "${ignore}" -j RETURN
     done
-    [ "${iptables}" = "$IPV" ] && log Info "${ignore_ap_list[*]} 入站接口已忽略透明代理。"
+    [ "${iptables}" = "$IPV" ] && log Info "Входящие интерфейсы ${ignore_ap_list[*]} исключены из прозрачного проксирования."
   fi
 
   if [ ${network_mode} != "enhance" ] && [ "${proxy_tcp}" = "true" ]; then
@@ -897,7 +897,7 @@ start_tproxy() {
     ensure_rule_append mangle BOX_EXTERNAL -p udp -i lo -j TPROXY --on-port "${tproxy_port}" --tproxy-mark "${fwmark}"
   fi
 
-  # 允许 ap 接口，注意：老设备只有一个 wlan，新设备可能有多个（如 wlan0 上网，wlan1 AP），遍历 ap 列表
+  # Разрешение AP-интерфейсов; внимание: старые устройства имеют один wlan, новые — несколько (например, wlan0 для интернета, wlan1 для AP); перебор списка AP
   if [ "${ap_list}" != "" ]; then
     for ap in ${ap_list[@]} ; do
       if [ "${mac_filter}" = "true" ]; then
@@ -916,7 +916,7 @@ start_tproxy() {
             _mac_added="true"
           done
           if [ "${_mac_added}" != "true" ]; then
-            [ "${iptables}" = "$IPV" ] && [ ${network_mode} != "enhance" ] && log Warning "热点接口 ${ap}：MAC 白名单已启用但列表为空/无有效项，将不代理该接口的客户端流量"
+            [ "${iptables}" = "$IPV" ] && [ ${network_mode} != "enhance" ] && log Warning "Интерфейс точки доступа ${ap}: белый список MAC включён, но список пуст/нет валидных записей — клиентский трафик этого интерфейса проксироваться не будет"
           fi
         else
           for mac_item in "${macs_list[@]}"; do
@@ -949,12 +949,12 @@ start_tproxy() {
     if [ "${iptables}" = "$IPV" ]; then
       if [ "${mac_filter}" = "true" ]; then
         if [ "${mac_mode}" = "whitelist" ]; then
-          [ ${network_mode} = "enhance" ] || log Info "${ap_list[*]} 热点 MAC 白名单透明代理已启用。"
+          [ ${network_mode} = "enhance" ] || log Info "Прозрачное проксирование с белым списком MAC для точек доступа ${ap_list[*]} включено."
         else
-          [ ${network_mode} = "enhance" ] || log Info "${ap_list[*]} 热点 MAC 黑名单透明代理已启用。"
+          [ ${network_mode} = "enhance" ] || log Info "Прозрачное проксирование с чёрным списком MAC для точек доступа ${ap_list[*]} включено."
         fi
       else
-        [ ${network_mode} = "enhance" ] || log Info "${ap_list[*]} 透明代理。"
+        [ ${network_mode} = "enhance" ] || log Info "Прозрачный прокси: ${ap_list[*]}."
       fi
     fi
   fi
@@ -997,7 +997,7 @@ start_tproxy() {
     [ "${bypass_cn_ip}" = "true" ] && [ "${bypass_cn_ip_v4}" = "true" ] && command -v ipset >/dev/null 2>&1 && ensure_rule_append mangle BOX_LOCAL -m set --match-set cnip dst -j RETURN
     ensure_rule_append mangle BOX_LOCAL -j LOCAL_IP_V4
   else
-    # 为本地发起的 IPv6 fake-ip 目的流量优先打标，避免被 intranet6 提前放行
+    # Маркировка локально инициированного трафика IPv6 с назначением fake-ip в первую очередь во избежание досрочного пропуска через intranet6
     if [ -n "${fake_ip6_range}" ] && [ "${bin_name}" = "mihomo" ]; then
       if [ ${network_mode} != "enhance" ] && [ "${proxy_tcp}" = "true" ]; then
         ensure_rule_append mangle BOX_LOCAL -p tcp -d "${fake_ip6_range}" -j MARK --set-xmark "${fwmark}"
@@ -1021,7 +1021,7 @@ start_tproxy() {
       if [ "${proxy_udp}" = "true" ]; then
         ensure_rule_append mangle BOX_LOCAL -p udp -j MARK --set-xmark "${fwmark}"
       fi
-      [ "${iptables}" = "$IPV" ] && log Info "核心模式：所有应用透明代理。"
+      [ "${iptables}" = "$IPV" ] && log Info "Режим ядра: все приложения проксируются прозрачно."
       ;;
     blacklist|black)
       if [ -z "$(cat "${uid_list}")" ] ; then
@@ -1031,7 +1031,7 @@ start_tproxy() {
         if [ "${proxy_udp}" = "true" ]; then
           ensure_rule_append mangle BOX_LOCAL -p udp -j MARK --set-xmark "${fwmark}"
         fi
-        [ "${iptables}" = "$IPV" ] && log Info "所有应用透明代理。"
+        [ "${iptables}" = "$IPV" ] && log Info "Все приложения проксируются прозрачно."
       else
         while read -r appid; do
           ensure_rule_append mangle BOX_LOCAL -m owner --uid-owner "${appid}" -j RETURN
@@ -1042,14 +1042,14 @@ start_tproxy() {
         if [ "${proxy_udp}" = "true" ]; then
           ensure_rule_append mangle BOX_LOCAL -p udp -j MARK --set-xmark "${fwmark}"
         fi
-        [ "${iptables}" = "$IPV" ] && log Info "代理模式: ${proxy_mode} (${packages_list[*]}) 不透明代理。"
+        [ "${iptables}" = "$IPV" ] && log Info "Режим прокси: ${proxy_mode} (${packages_list[*]}) — без проксирования."
       fi
 
       if [ "${gid_list}" != "" ] ; then
         for gid in ${gid_list[@]} ; do
           ensure_rule_append mangle BOX_LOCAL -m owner --gid-owner ${gid} -j RETURN
         done
-        [ "${iptables}" = "$IPV" ] && log Info "代理模式: ${proxy_mode}, GID (${gid_list[*]}) 不透明代理。"
+        [ "${iptables}" = "$IPV" ] && log Info "Режим прокси: ${proxy_mode}, GID (${gid_list[*]}) — без проксирования."
       fi
       ;;
     whitelist|white)
@@ -1060,7 +1060,7 @@ start_tproxy() {
         if [ "${proxy_udp}" = "true" ]; then
           ensure_rule_append mangle BOX_LOCAL -p udp -j MARK --set-xmark "${fwmark}"
         fi
-        [ "${iptables}" = "$IPV" ] && log Info "所有应用透明代理。"
+        [ "${iptables}" = "$IPV" ] && log Info "Все приложения проксируются прозрачно."
       else
         while read -r appid; do
           if [ ${network_mode} != "enhance" ] && [ "${proxy_tcp}" = "true" ]; then
@@ -1082,7 +1082,7 @@ start_tproxy() {
         if [ "${proxy_udp}" = "true" ]; then
           ensure_rule_append mangle BOX_LOCAL -p udp -m owner --uid-owner 1052 -j MARK --set-xmark "${fwmark}"
         fi
-        [ "${iptables}" = "$IPV" ] && log Info "代理模式: ${proxy_mode} (${packages_list[*]}) 透明代理。"
+        [ "${iptables}" = "$IPV" ] && log Info "Режим прокси: ${proxy_mode} (${packages_list[*]}) — прозрачное проксирование."
       fi
 
       if [ "${gid_list}" != "" ] ; then
@@ -1094,18 +1094,18 @@ start_tproxy() {
             ensure_rule_append mangle BOX_LOCAL -p udp -m owner --gid-owner ${gid} -j MARK --set-xmark "${fwmark}"
           fi
         done
-        [ "${iptables}" = "$IPV" ] && log Info "代理模式: ${proxy_mode}, GID (${gid_list[*]}) 透明代理。"
+        [ "${iptables}" = "$IPV" ] && log Info "Режим прокси: ${proxy_mode}, GID (${gid_list[*]}) — прозрачное проксирование."
       fi
       ;;
     *)
-      log Debug "代理模式: ${proxy_mode} 配置错误"
+      log Debug "Режим прокси: ${proxy_mode} — ошибка конфигурации"
       if [ ${network_mode} != "enhance" ] && [ "${proxy_tcp}" = "true" ]; then
         ensure_rule_append mangle BOX_LOCAL -p tcp -j MARK --set-xmark "${fwmark}"
       fi
       if [ "${proxy_udp}" = "true" ]; then
         ensure_rule_append mangle BOX_LOCAL -p udp -j MARK --set-xmark "${fwmark}"
       fi
-      [ "${iptables}" = "$IPV" ] && log Info "所有应用透明代理。"
+      [ "${iptables}" = "$IPV" ] && log Info "Все приложения проксируются прозрачно."
       ;;
     esac
 
@@ -1120,16 +1120,16 @@ start_tproxy() {
     fi
   fi
 
-  # 禁用 QUIC
+  # Отключить QUIC
   if [ "${quic}" = "disable" ] && [ "${proxy_udp}" = "true" ]; then
     ensure_rule_append filter OUTPUT -p udp --dport 443 -j REJECT
     ensure_rule_append filter OUTPUT -p udp --dport 80 -j REJECT
     # ${iptables} -A OUTPUT -p udp -m multiport --dport 443,80 -j REJECT
-    [ "${iptables}" = "$IPV" ] && log Warning "已禁用 QUIC"
+    [ "${iptables}" = "$IPV" ] && log Warning "QUIC отключён"
   fi
 
 if [ ${network_mode} != "enhance" ]; then
-  # 阻止本地访问 tproxy 端口，防止流量回环
+  # Блокировка локального доступа к порту tproxy для предотвращения зацикливания трафика
   if [ "${iptables}" = "$IPV" ]; then
     ensure_rule_append filter OUTPUT -d 127.0.0.1 -p tcp -m owner --uid-owner "${box_user}" --gid-owner "${box_group}" -m tcp --dport "${tproxy_port}" -j REJECT
   else
@@ -1154,7 +1154,7 @@ fi
       ensure_jump nat OUTPUT MIHOMO_DNS_LOCAL
     fi
 
-    # 修复 ICMP（ping），这不能保证 ping 结果有效（如 clash 不支持转发 ICMP），仅保证有返回，--to-destination 可设为可达地址
+    # Исправление ICMP (ping); не гарантирует корректный результат ping (например, clash не поддерживает пересылку ICMP), только гарантирует ответ; --to-destination можно задать как достижимый адрес
     if [[ "${bin_name}" == @(mihomo|sing-box) ]]; then
       if [ -n "${fake_ip_range}" ]; then
         ensure_rule_insert nat OUTPUT -d "${fake_ip_range}" -p icmp -j DNAT --to-destination 127.0.0.1
@@ -1192,7 +1192,7 @@ stop_tproxy() {
 
   cleanup_chain_fast mangle DIVERT
 
-  # 清理 QUIC
+  # Очистка правил QUIC
   del_rule_silent filter OUTPUT -p udp -m multiport --dport 443,80 -j REJECT
   del_rule_silent filter OUTPUT -p udp --dport 443 -j REJECT
   del_rule_silent filter OUTPUT -p udp --dport 80 -j REJECT
@@ -1211,7 +1211,7 @@ stop_tproxy() {
     cleanup_chain_fast nat MIHOMO_DNS_EXTERNAL
     cleanup_chain_fast nat MIHOMO_DNS_LOCAL
 
-    # 清理自定义 NAT DNS 劫持链（当 dns_hijack_mode=redirect 时创建）
+    # Очистка пользовательской цепочки перехвата NAT DNS (создаётся при dns_hijack_mode=redirect)
     del_jump_silent nat PREROUTING NAT_DNS_HIJACK
     del_jump_silent nat OUTPUT NAT_DNS_HIJACK
     cleanup_chain_fast nat NAT_DNS_HIJACK
@@ -1224,7 +1224,7 @@ stop_tproxy() {
     fi
   fi
   if [ "${iptables}" = "$IP6V" ]; then
-    # 清理 IPv6 NAT DNS 劫持链（如存在）
+    # Очистка цепочки перехвата IPv6 NAT DNS (если существует)
     del_jump_silent nat PREROUTING NAT_DNS_HIJACK6
     del_jump_silent nat OUTPUT NAT_DNS_HIJACK6
     cleanup_chain_fast nat NAT_DNS_HIJACK6
@@ -1247,27 +1247,27 @@ cleanup_iptables() {
 
 log_iptables_results() {
   [ "${network_mode}" = "tun" ] && return 0
-  log Info "操作: 添加 iptables 规则"
+  log Info "Действие: добавление правил iptables"
   log_context
-  log Info "代理模式: ${proxy_mode}"
+  log Info "Режим прокси: ${proxy_mode}"
 
   local applied_uids=$(cat "${uid_list}" 2>/dev/null | tr '\n' ' ')
 
   if [ -n "$applied_uids" ]; then
-    log Debug "应用的 UIDs: $applied_uids"
+    log Debug "Применяемые UID: $applied_uids"
   else
     if [[ "$proxy_mode" == "core" ]]; then
-      log Debug "(核心模式, 所有应用透明代理)"
+      log Debug "(режим ядра, все приложения проксируются прозрачно)"
     elif [[ "$proxy_mode" == "whitelist" || "$proxy_mode" == "white" ]]; then
-      log Debug "(列表为空, 代理所有应用)"
+      log Debug "(список пуст, проксируются все приложения)"
     else
-      log Debug "(列表为空, 不代理任何应用)"
+      log Debug "(список пуст, ни одно приложение не проксируется)"
     fi
   fi
 }
 
 log_iptables_cleanup() {
-  log Info "操作: 清理 iptables 规则"
+  log Info "Действие: очистка правил iptables"
   log_context
 }
 
@@ -1282,163 +1282,163 @@ if [[ "${network_mode}" == @(redirect|mixed|tproxy|enhance) ]]; then
       box_etc
       log Info "$IPV + $IP6V"
       probe_user_group || {
-        log Error "检测 BOX 用户组失败，请确保 ${bin_name} 内核已启动。"
+        log Error "Ошибка определения группы BOX, убедитесь, что ядро ${bin_name} запущено."
       }
       log_iptables_results
       cleanup_iptables
 
-      # 准备大陆 IP 分流 ipset
+      # Подготовка ipset для обхода IP материкового Китая
       if [ "${bypass_cn_ip}" = "true" ]; then
-        setup_cn_ipset || log Warning "CN IP 分流初始化失败，已跳过"
+        setup_cn_ipset || log Warning "Инициализация CN IP-обхода не удалась, пропущено"
       fi
 
-      [ $1 = "renew" ] && log Warning "正在清理 iptables 透明代理规则。"
+      [ $1 = "renew" ] && log Warning "Выполняется очистка правил прозрачного прокси iptables."
 
       case "${network_mode}" in
         tproxy)
-          log Info "使用 Tproxy: tcp + udp。"
-          log Info "正在创建 iptables 透明代理规则。"
+          log Info "Используется Tproxy: tcp + udp."
+          log Info "Выполняется создание правил прозрачного прокси iptables."
 
           iptables="$IPV"
           if start_tproxy; then
-            log Info "iptables 透明代理规则创建完成。"
+            log Info "Правила прозрачного прокси iptables успешно созданы."
           else
-            log Error "iptables 透明代理规则创建失败。"
+            log Error "Ошибка создания правил прозрачного прокси iptables."
             stop_tproxy > /dev/null 2>&1
           fi
 
           if [ "${ipv6}" = "true" ]; then
-            log Debug "启用 IPv6。"
+            log Debug "IPv6 включён."
             ipv6_enable
             iptables="$IP6V"
 
             if start_tproxy; then
-              log Info "ip6tables 透明代理规则创建完成。"
+              log Info "Правила прозрачного прокси ip6tables успешно созданы."
             else
-              log Error "ip6tables 透明代理规则创建失败。"
+              log Error "Ошибка создания правил прозрачного прокси ip6tables."
               stop_tproxy > /dev/null 2>&1
             fi
           else
             disable_ipv6
-            log Warning "已禁用 IPv6。"
+            log Warning "IPv6 отключён."
           fi
         ;;
         redirect)
-          log Info "使用 Redirect: tcp + udp（直连）。"
-          log Info "正在创建 iptables 透明代理规则。"
+          log Info "Используется Redirect: tcp + udp (прямое соединение)."
+          log Info "Выполняется создание правил прозрачного прокси iptables."
 
           iptables="$IPV"
           if start_redirect; then
-            log Info "iptables 透明代理规则创建完成。"
+            log Info "Правила прозрачного прокси iptables успешно созданы."
           else
-            log Error "iptables 透明代理规则创建失败。"
+            log Error "Ошибка создания правил прозрачного прокси iptables."
             stop_redirect > /dev/null 2>&1
           fi
 
           if [ "${ipv6}" = "true" ]; then
-            log Debug "启用 IPv6。"
+            log Debug "IPv6 включён."
             ipv6_enable
             iptables="$IP6V"
 
             if start_redirect; then
-              log Info "ip6tables 透明代理规则创建完成。"
+              log Info "Правила прозрачного прокси ip6tables успешно созданы."
             else
-              log Error "ip6tables 透明代理规则创建失败。"
+              log Error "Ошибка создания правил прозрачного прокси ip6tables."
               stop_redirect > /dev/null 2>&1
             fi
           else
             disable_ipv6
-            log Warning "已禁用 IPv6。"
+            log Warning "IPv6 отключён."
           fi
         ;;
         mixed)
-          log Info "使用 Mixed: tcp(redirect) + udp(tun)。"
-          log Info "正在创建 iptables 透明代理规则。"
+          log Info "Используется Mixed: tcp(redirect) + udp(tun)."
+          log Info "Выполняется создание правил прозрачного прокси iptables."
 
           iptables="$IPV"
-          probe_tun_device || log Error "未找到 TUN 设备: (${tun_device})"
+          probe_tun_device || log Error "TUN-устройство не найдено: (${tun_device})"
           forward -I || forward -D > /dev/null 2>&1
 
           if start_redirect; then
-            log Info "iptables 透明代理规则创建完成。"
+            log Info "Правила прозрачного прокси iptables успешно созданы."
           else
-            log Error "iptables 透明代理规则创建失败。"
+            log Error "Ошибка создания правил прозрачного прокси iptables."
             stop_redirect > /dev/null 2>&1
           fi
 
           if [ "${ipv6}" = "true" ]; then
-            log Debug "启用 IPv6。"
+            log Debug "IPv6 включён."
             ipv6_enable
             iptables="$IP6V"
             forward -I || forward -D > /dev/null 2>&1
             if start_redirect; then
-              log Info "ip6tables 透明代理规则创建完成。"
+              log Info "Правила прозрачного прокси ip6tables успешно созданы."
             else
-              log Error "ip6tables 透明代理规则创建失败。"
+              log Error "Ошибка создания правил прозрачного прокси ip6tables."
               stop_redirect > /dev/null 2>&1
             fi
           else
             disable_ipv6
-            log Warning "已禁用 IPv6。"
+            log Warning "IPv6 отключён."
           fi
         ;;
         enhance)
-          log Info "使用 Enhance: tcp(redirect) + udp(tproxy)"
-          log Info "正在创建 iptables 透明代理规则。"
+          log Info "Используется Enhance: tcp(redirect) + udp(tproxy)"
+          log Info "Выполняется создание правил прозрачного прокси iptables."
 
           iptables="$IPV"
           if start_redirect && start_tproxy; then
-            log Info "iptables 透明代理规则创建完成。"
+            log Info "Правила прозрачного прокси iptables успешно созданы."
           else
-            log Error "iptables 透明代理规则创建失败。"
+            log Error "Ошибка создания правил прозрачного прокси iptables."
             stop_redirect > /dev/null 2>&1
           fi
 
           if [ "${ipv6}" = "true" ]; then
-            log Debug "启用 IPv6。"
+            log Debug "IPv6 включён."
             ipv6_enable
             iptables="$IP6V"
             if start_redirect && start_tproxy; then
-              log Info "ip6tables 透明代理规则创建完成。"
+              log Info "Правила прозрачного прокси ip6tables успешно созданы."
             else
-              log Error "ip6tables 透明代理规则创建失败。"
+              log Error "Ошибка создания правил прозрачного прокси ip6tables."
               stop_redirect > /dev/null 2>&1
             fi
           else
             disable_ipv6
-            log Warning "已禁用 IPv6。"
+            log Warning "IPv6 отключён."
           fi
         ;;
         *)
-          log Error "network_mode: ${network_mode}，未知模式"
+          log Error "network_mode: ${network_mode} — неизвестный режим"
           exit 1
         ;;
       esac
       runtime_save
-      [ $1 = "renew" ] && log Debug "重启 iptables 透明代理规则完成。"
-      bin_alive && log Info "${bin_name} 已连接。"
+      [ $1 = "renew" ] && log Debug "Правила прозрачного прокси iptables успешно перезапущены."
+      bin_alive && log Info "${bin_name} подключён."
       ;;
     disable)
       runtime_load >/dev/null 2>&1 || true
       ipv6_enable
-      probe_user_group || log Error "检测 BOX 用户组失败，请确保 ${bin_name} 内核已启动。"
+      probe_user_group || log Error "Ошибка определения группы BOX, убедитесь, что ядро ${bin_name} запущено."
       log_iptables_cleanup
-      log Warning "正在清理 iptables 透明代理规则。"
+      log Warning "Выполняется очистка правил прозрачного прокси iptables."
 
       cleanup_iptables
 
-      # 清理大陆 IP 分流 ipset
+      # Очистка ipset для обхода IP материкового Китая
       if [ "${bypass_cn_ip}" = "true" ]; then
         cleanup_cn_ipset
       fi
 
       runtime_clear
 
-      log Warning "iptables 透明代理规则清理完成。"
+      log Warning "Правила прозрачного прокси iptables очищены."
       ;;
     *)
-      echo "${red}$0 $1 未知命令${normal}"
-      echo "${yellow}用法:${normal} ${green}$0${normal} {${yellow}enable|disable|renew${normal}}"
+      echo "${red}$0 $1 неизвестная команда${normal}"
+      echo "${yellow}Использование:${normal} ${green}$0${normal} {${yellow}enable|disable|renew${normal}}"
       ;;
   esac
 else
@@ -1447,61 +1447,61 @@ else
       apply_capability_downgrades
       box_etc
       log Info "$IPV + $IP6V"
-      log Info "使用 Tun: tcp + udp。"
+      log Info "Используется Tun: tcp + udp."
 
       probe_user_group || {
-        log Error "检测 BOX 用户组失败，请确保 ${bin_name} 内核已启动。"
+        log Error "Ошибка определения группы BOX, убедитесь, что ядро ${bin_name} запущено."
       }
       log_iptables_results
       cleanup_iptables
-      probe_tun_device || log Error "未找到 TUN 设备: (${tun_device})"
-      [ $1 = "renew" ] && log Warning "正在清理 TUN 规则。"
+      probe_tun_device || log Error "TUN-устройство не найдено: (${tun_device})"
+      [ $1 = "renew" ] && log Warning "Выполняется очистка правил TUN."
       iptables="$IPV"
 
-      [ -n "${packages_list}" ] && log Debug "代理模式: $proxy_mode (${packages_list[*]})"
+      [ -n "${packages_list}" ] && log Debug "Режим прокси: $proxy_mode (${packages_list[*]})"
 
       if forward -I; then
-        log Info "iptables TUN 规则创建完成。"
+        log Info "Правила TUN iptables успешно созданы."
       else
-        log Error "iptables TUN 规则创建失败。"
+        log Error "Ошибка создания правил TUN iptables."
         forward -D > /dev/null 2>&1
       fi
 
       if [ "${ipv6}" = "true" ]; then
-        log Debug "启用 IPv6。"
+        log Debug "IPv6 включён."
         ipv6_enable
         iptables="$IP6V"
         if forward -I; then
-          log Info "ip6tables TUN 规则创建完成。"
+          log Info "Правила TUN ip6tables успешно созданы."
         else
-          log Error "ip6tables TUN 规则创建失败。"
+          log Error "Ошибка создания правил TUN ip6tables."
           forward -D > /dev/null 2>&1
         fi
       else
         disable_ipv6
-        log Warning "已禁用 IPv6。"
+        log Warning "IPv6 отключён."
       fi
 
       runtime_save
-      [ $1 = "renew" ] && log Info "重启 iptables TUN 规则完成。"
-      bin_alive && log Info "${bin_name} 已连接。"
+      [ $1 = "renew" ] && log Info "Правила TUN iptables успешно перезапущены."
+      bin_alive && log Info "${bin_name} подключён."
       ;;
     disable)
       runtime_load >/dev/null 2>&1 || true
       ipv6_enable
-      probe_user_group || log Error "检测 BOX 用户组失败，请确保 ${bin_name} 内核已启动。"
+      probe_user_group || log Error "Ошибка определения группы BOX, убедитесь, что ядро ${bin_name} запущено."
       log_iptables_cleanup
-      log Warning "正在清理 TUN 规则。"
+      log Warning "Выполняется очистка правил TUN."
 
       cleanup_iptables
 
       runtime_clear
 
-      log Warning "TUN 规则清理完成。"
+      log Warning "Правила TUN очищены."
       ;;
     *)
-      echo "${red}$0: '$1' 未知命令${normal}"
-      echo "${yellow}用法:${normal} ${green}$0${normal} {${yellow}enable|disable|renew${normal}}"
+      echo "${red}$0: '$1' неизвестная команда${normal}"
+      echo "${yellow}Использование:${normal} ${green}$0${normal} {${yellow}enable|disable|renew${normal}}"
       ;;
   esac
 fi
