@@ -5,12 +5,12 @@ scripts_dir="${0%/*}"
 user_agent="box_for_root"
 source /data/adb/box/settings.ini
 
-# 使用 settings.ini 中提供的 log()
+# Использовать log() из settings.ini
 TOOL_LOG="${box_run}/tool.log"
 busybox mkdir -p "$(dirname "$TOOL_LOG")"
 box_log="$TOOL_LOG"
 
-# 设置 GitHub API 访问配置
+# Настроить параметры доступа к GitHub API
 setup_github_api() {
   rev1="busybox wget --no-check-certificate -qO-"
   if which curl >/dev/null; then
@@ -22,9 +22,9 @@ setup_github_api() {
     else
       rev1="busybox wget --no-check-certificate -qO- --header=\"Authorization: token ${githubtoken}\""
     fi
-    log Debug "GitHub Token 已配置，将使用认证访问 GitHub API"
+    log Debug "GitHub Token настроен, будет использоваться аутентифицированный доступ к GitHub API"
   else
-    log Debug "未配置 GitHub Token，将使用匿名访问 GitHub API"
+    log Debug "GitHub Token не настроен, будет использоваться анонимный доступ к GitHub API"
   fi
 }
 
@@ -33,22 +33,22 @@ mask_url() {
   echo "$u" | sed -E 's#^([a-zA-Z][a-zA-Z0-9+.-]*://)?([^/]+).*$#\1\2/***#'
 }
 
-# 启动提示
+# Уведомление о запуске
 divider() {
   local line="----------------------------------------"
   [ -n "$box_log" ] && echo "$line" >> "$box_log"
 }
 trap divider EXIT
-log Info "执行命令: $0 $@"
+log Info "Выполнение команды: $0 $@"
 
-# 更新文件
+# Обновление файла
 upfile() {
   local file="$1"
   local update_url="$2"
-  local custom_ua="$3" # 接收自定义 User-Agent
+  local custom_ua="$3" # Получить пользовательский User-Agent
   local current_ua
 
-  # 如果提供了自定义 UA, 则使用它; 否则使用全局默认值
+  # Если задан пользовательский UA — использовать его, иначе использовать глобальное значение по умолчанию
   if [ -n "${custom_ua}" ]; then
     current_ua="${custom_ua}"
   else
@@ -58,7 +58,7 @@ upfile() {
   local file_bak="${file}.bak"
   [ -f "${file}" ] && mv "${file}" "${file_bak}"
 
-  # 使用 ghproxy
+  # Использовать ghproxy
   if [ "${use_ghproxy}" = "true" ] && [[ "${update_url}" == @(https://github.com/*|https://raw.githubusercontent.com/*|https://gist.github.com/*|https://gist.githubusercontent.com/*) ]]; then
     update_url="${url_ghproxy}/${update_url}"
   fi
@@ -67,89 +67,89 @@ upfile() {
   if [ "${LOG_MASK_URL}" = "mask" ]; then
     log_url="$(mask_url "${update_url}")"
   fi
-  log Info "开始下载: ${log_url}"
-  log Debug "保存到: ${file}"
-  log Debug "使用 User-Agent: ${current_ua}"
+  log Info "Начало загрузки: ${log_url}"
+  log Debug "Сохранение в: ${file}"
+  log Debug "Используется User-Agent: ${current_ua}"
 
   if which curl >/dev/null; then
     http_code=$(curl -L -s --insecure --http1.1 --compressed --user-agent "${current_ua}" -o "${file}" -w "%{http_code}" "${update_url}")
     curl_exit_code=$?
 
     if [ ${curl_exit_code} -ne 0 ]; then
-      log Error "使用 curl 下载失败 (退出码: ${curl_exit_code})"
+      log Error "Загрузка через curl завершилась с ошибкой (код выхода: ${curl_exit_code})"
       [ -f "${file_bak}" ] && mv "${file_bak}" "${file}"
       return 1
     fi
 
     if [ "${http_code}" -ne 200 ]; then
-      log Error "下载失败: 服务器返回 HTTP 状态码 ${http_code}"
+      log Error "Ошибка загрузки: сервер вернул HTTP-статус ${http_code}"
       [ -f "${file_bak}" ] && mv "${file_bak}" "${file}"
       return 1
     fi
   else
     if ! busybox wget --no-check-certificate -q -U "${current_ua}" -O "${file}" "${update_url}"; then
-      log Error "使用 wget 下载失败"
+      log Error "Загрузка через wget завершилась с ошибкой"
       [ -f "${file_bak}" ] && mv "${file_bak}" "${file}"
       return 1
     fi
   fi
 
   if [ ! -s "${file}" ]; then
-    log Error "下载失败: 文件为空"
+    log Error "Ошибка загрузки: файл пустой"
     [ -f "${file_bak}" ] && mv "${file_bak}" "${file}"
     return 1
   fi
   
-  log Info "下载成功"
+  log Info "Загрузка выполнена успешно"
   rm -f "${file_bak}" 2>/dev/null
   return 0
 }
 
-# CN IPv4/IPv6 列表更新
+# Обновление списков CN IPv4/IPv6
 upcnip() {
   local did_any=false
   # IPv4
   if [ "${bypass_cn_ip}" = "true" ] && [ "${bypass_cn_ip_v4}" = "true" ]; then
     if [ -z "${cn_ip_url}" ] || [ -z "${cn_ip_file}" ]; then
-      log Warning "cn_ip_url 或 cn_ip_file 未配置，跳过 IPv4"
+      log Warning "cn_ip_url или cn_ip_file не настроен, пропуск IPv4"
     else
-      log Info "下载 CN IPv4 列表 → ${cn_ip_file}"
+      log Info "Загрузка списка CN IPv4 → ${cn_ip_file}"
       if upfile "${cn_ip_file}" "${cn_ip_url}"; then
-        log Info "CN IPv4 列表更新完成"
+        log Info "Список CN IPv4 обновлён"
         did_any=true
       else
-        log Error "CN IPv4 列表更新失败"
+        log Error "Обновление списка CN IPv4 завершилось с ошибкой"
       fi
     fi
   else
-    log Debug "未启用 IPv4 CN 分流（bypass_cn_ip/bypass_cn_ip_v4=false），跳过下载"
+    log Debug "Обход CN IPv4 не включён (bypass_cn_ip/bypass_cn_ip_v4=false), пропуск загрузки"
   fi
 
   # IPv6
   if [ "${bypass_cn_ip}" = "true" ] && [ "${ipv6}" = "true" ] && [ "${bypass_cn_ip_v6}" = "true" ]; then
     if [ -z "${cn_ipv6_url}" ] || [ -z "${cn_ipv6_file}" ]; then
-      log Warning "cn_ipv6_url 或 cn_ipv6_file 未配置，跳过 IPv6"
+      log Warning "cn_ipv6_url или cn_ipv6_file не настроен, пропуск IPv6"
     else
-      log Info "下载 CN IPv6 列表 → ${cn_ipv6_file}"
+      log Info "Загрузка списка CN IPv6 → ${cn_ipv6_file}"
       if upfile "${cn_ipv6_file}" "${cn_ipv6_url}"; then
-        log Info "CN IPv6 列表更新完成"
+        log Info "Список CN IPv6 обновлён"
         did_any=true
       else
-        log Error "CN IPv6 列表更新失败"
+        log Error "Обновление списка CN IPv6 завершилось с ошибкой"
       fi
     fi
   else
-    log Debug "未启用 IPv6 CN 分流或未开启 IPv6，跳过下载"
+    log Debug "Обход CN IPv6 не включён или IPv6 отключён, пропуск загрузки"
   fi
 
   $did_any && return 0 || return 1
 }
 
-# 重启核心进程
+# Перезапуск основного процесса
 restart_box() {
   local core_to_restart=${1:-$bin_name}
   if [ -z "$core_to_restart" ]; then
-    log Error "restart_box: 未指定需要重启的核心"
+    log Error "restart_box: не указано ядро для перезапуска"
     return 1
   fi
   
@@ -159,19 +159,19 @@ restart_box() {
   pid=$(busybox pidof "$core_to_restart")
 
   if [ -n "$pid" ]; then
-    log Info "$core_to_restart 重启完成 [$(date +"%F %R")]"
+    log Info "Перезапуск $core_to_restart завершён [$(date +"%F %R")]"
   else
-    log Error "重启 $core_to_restart 失败."
+    log Error "Не удалось перезапустить $core_to_restart."
     "${scripts_dir}/box.iptables" disable >/dev/null 2>&1
   fi
 }
 
-# 检查配置
+# Проверка конфигурации
 check() {
   case "${bin_name}" in
     sing-box)
       if ${bin_path} check -c "${sing_config}" > "${box_run}/${bin_name}_report.log" 2>&1; then
-        log Info "${sing_config} 检查通过"
+        log Info "${sing_config} — проверка пройдена"
       else
         log Debug "${sing_config}"
         log Error "$(<"${box_run}/${bin_name}_report.log")" >&2
@@ -179,7 +179,7 @@ check() {
       ;;
     mihomo)
       if ${bin_path} -t -d "${box_dir}/mihomo" -f "${mihomo_config}" > "${box_run}/${bin_name}_report.log" 2>&1; then
-        log Info "${mihomo_config} 检查通过"
+        log Info "${mihomo_config} — проверка пройдена"
       else
         log Debug "${mihomo_config}"
         log Error "$(<"${box_run}/${bin_name}_report.log")" >&2
@@ -188,7 +188,7 @@ check() {
     xray)
       export XRAY_LOCATION_ASSET="${box_dir}/xray"
       if ${bin_path} -test -confdir "${box_dir}/${bin_name}" > "${box_run}/${bin_name}_report.log" 2>&1; then
-        log Info "配置检查通过"
+        log Info "Проверка конфигурации пройдена"
       else
         log Debug "$(ls ${box_dir}/${bin_name})"
         log Error "$(<"${box_run}/${bin_name}_report.log")" >&2
@@ -197,7 +197,7 @@ check() {
     v2fly)
       export V2RAY_LOCATION_ASSET="${box_dir}/v2fly"
       if ${bin_path} test -d "${box_dir}/${bin_name}" > "${box_run}/${bin_name}_report.log" 2>&1; then
-        log Info "配置检查通过"
+        log Info "Проверка конфигурации пройдена"
       else
         log Debug "$(ls ${box_dir}/${bin_name})"
         log Error "$(<"${box_run}/${bin_name}_report.log")" >&2
@@ -207,13 +207,13 @@ check() {
       true
       ;;
     *)
-      log Error "<${bin_name}> 未知的二进制文件."
+      log Error "<${bin_name}> Неизвестный бинарный файл."
       exit 1
       ;;
   esac
 }
 
-# 重载基础配置
+# Перезагрузка базовой конфигурации
 reload() {
   ip_port=$(if [ "${bin_name}" = "mihomo" ]; then busybox awk '/external-controller:/ {print $2}' "${mihomo_config}" | sed "s/'//g"; else busybox awk -F'[:,]' '/"external_controller"/ {print $2":"$3}' "${sing_config}" | sed 's/^[ \t]*//;s/"//g'; fi;)
   secret=$(if [ "${bin_name}" = "mihomo" ]; then busybox awk '/^secret:/ {print $2}' "${mihomo_config}" | sed 's/"//g'; else busybox awk -F'"' '/"secret"/ {print $4}' "${sing_config}" | head -n 1; fi;)
@@ -221,8 +221,8 @@ reload() {
   curl_command="curl"
   if ! command -v curl >/dev/null; then
     if [ ! -e "${bin_dir}/curl" ]; then
-      log Debug "$bin_dir/curl 文件未找到, 无法重载配置"
-      log Debug "开始从 GitHub 下载"
+      log Debug "$bin_dir/curl не найден, перезагрузка конфигурации невозможна"
+      log Debug "Начало загрузки с GitHub"
       upcurl || exit 1
     fi
     curl_command="${bin_dir}/curl"
@@ -235,20 +235,20 @@ reload() {
       endpoint="http://${ip_port}/configs?force=true"
 
       if ${curl_command} -X PUT -H "Authorization: Bearer ${secret}" "${endpoint}" -d '{"path": "", "payload": ""}' 2>&1; then
-        log Info "${bin_name} 配置重载成功"
+        log Info "${bin_name}: конфигурация успешно перезагружена"
         return 0
       else
-        log Error "${bin_name} 配置重载失败 !"
+        log Error "${bin_name}: ошибка перезагрузки конфигурации!"
         return 1
       fi
       ;;
     "sing-box")
       endpoint="http://${ip_port}/configs?force=true"
       if ${curl_command} -X PUT -H "Authorization: Bearer ${secret}" "${endpoint}" -d '{"path": "", "payload": ""}' 2>&1; then
-        log Info "${bin_name} 配置重载成功."
+        log Info "${bin_name}: конфигурация успешно перезагружена."
         return 0
       else
-        log Error "${bin_name} 配置重载失败 !"
+        log Error "${bin_name}: ошибка перезагрузки конфигурации!"
         return 1
       fi
       ;;
@@ -260,13 +260,13 @@ reload() {
       fi
       ;;
     *)
-      log Warning "${bin_name} 不支持使用 API 重载配置."
+      log Warning "${bin_name} не поддерживает перезагрузку конфигурации через API."
       return 1
       ;;
   esac
 }
 
-# 获取最新的 curl
+# Получить последнюю версию curl
 upcurl() {
   setup_github_api
   
@@ -276,7 +276,7 @@ upcurl() {
     "armv7l"|"armv8l") arch="armv7" ;;
     "i686") arch="i686" ;;
     "x86_64") arch="amd64" ;;
-    *) log Warning "不支持的架构: $(uname -m)" >&2; return 1 ;;
+    *) log Warning "Неподдерживаемая архитектура: $(uname -m)" >&2; return 1 ;;
   esac
 
   mkdir -p "${bin_dir}/backup"
@@ -287,9 +287,9 @@ upcurl() {
   local temp_archive="${box_dir}/curl.tar.xz"
   local temp_extract_dir="${box_dir}/curl_temp"
 
-  log Debug "下载 ${download_link}"
+  log Debug "Загрузка ${download_link}"
   if ! upfile "${temp_archive}" "${download_link}"; then
-    log Error "下载 curl 失败"
+    log Error "Ошибка загрузки curl"
     return 1
   fi
   
@@ -297,8 +297,8 @@ upcurl() {
   mkdir -p "${temp_extract_dir}"
 
   if ! busybox tar -xJf "${temp_archive}" -C "${temp_extract_dir}" >&2; then
-    log Error "解压 ${temp_archive} 失败" >&2
-    cp "${bin_dir}/backup/curl.bak" "${bin_dir}/curl" >/dev/null 2>&1 && log Info "已恢复 curl"
+    log Error "Ошибка распаковки ${temp_archive}" >&2
+    cp "${bin_dir}/backup/curl.bak" "${bin_dir}/curl" >/dev/null 2>&1 && log Info "curl восстановлен"
     rm -f "${temp_archive}"
     rm -rf "${temp_extract_dir}"
     return 1
@@ -307,9 +307,9 @@ upcurl() {
   local curl_binary=$(find "${temp_extract_dir}" -type f -name "curl")
   if [ -n "${curl_binary}" ]; then
     mv "${curl_binary}" "${bin_dir}/curl"
-    log Info "curl 已成功更新到 ${bin_dir}/curl"
+    log Info "curl успешно обновлён в ${bin_dir}/curl"
   else
-    log Error "在解压的存档中未找到 curl 二进制文件"
+    log Error "Бинарный файл curl не найден в распакованном архиве"
     rm -f "${temp_archive}"
     rm -rf "${temp_extract_dir}"
     return 1
@@ -322,7 +322,7 @@ upcurl() {
   rm -rf "${temp_extract_dir}"
 }
 
-# 获取最新的 yq
+# Получить последнюю версию yq
 upyq() {
   local arch platform
   case $(uname -m) in
@@ -330,19 +330,19 @@ upyq() {
     "armv7l"|"armv8l") arch="arm"; platform="android" ;;
     "i686") arch="386"; platform="android" ;;
     "x86_64") arch="amd64"; platform="android" ;;
-    *) log Warning "不支持的架构: $(uname -m)" >&2; return 1 ;;
+    *) log Warning "Неподдерживаемая архитектура: $(uname -m)" >&2; return 1 ;;
   esac
 
   local download_link="https://github.com/taamarin/yq/releases/download/prerelease/yq_${platform}_${arch}"
 
-  log Debug "下载 ${download_link}"
+  log Debug "Загрузка ${download_link}"
   upfile "${box_dir}/bin/yq" "${download_link}"
 
   chown "${box_user_group}" "${box_dir}/bin/yq"
   chmod 0755 "${box_dir}/bin/yq"
 }
 
-# 检查并更新 geoip 和 geosite
+# Проверка и обновление geoip и geosite
 upgeox() {
   geodata_mode=$(busybox awk '!/^ *#/ && /geodata-mode:*./{print $2}' "${mihomo_config}")
   [ -z "${geodata_mode}" ] && geodata_mode=false
@@ -366,13 +366,13 @@ upgeox() {
       geosite_url="https://github.com/MetaCubeX/meta-rules-dat/raw/release/geosite.dat"
       ;;
   esac
-  if [ "${update_geo}" = "true" ] && { log Info "每日更新 GeoX" && log Debug "正在下载 ${geoip_url}"; } && upfile "${geoip_file}" "${geoip_url}" && { log Debug "正在下载 ${geosite_url}" && upfile "${geosite_file}" "${geosite_url}"; }; then
+  if [ "${update_geo}" = "true" ] && { log Info "Ежедневное обновление GeoX" && log Debug "Загрузка ${geoip_url}"; } && upfile "${geoip_file}" "${geoip_url}" && { log Debug "Загрузка ${geosite_url}" && upfile "${geosite_file}" "${geosite_url}"; }; then
 
     find "${box_dir}/${bin_name}" -maxdepth 1 -type f -name "*.db.bak" -delete
     find "${box_dir}/${bin_name}" -maxdepth 1 -type f -name "*.dat.bak" -delete
     find "${box_dir}/${bin_name}" -maxdepth 1 -type f -name "*.mmdb.bak" -delete
 
-    log Debug "更新 GeoX 于 $(date "+%F %R")"
+    log Debug "GeoX обновлён $(date "+%F %R")"
     return 0
   else
    return 1
@@ -388,29 +388,29 @@ upgeox_all() {
   bin_name=$original_bin_name
 }
 
-# 更新 mihomo 配置的 proxy-providers
+# Обновление proxy-providers конфигурации mihomo
 update_mihomo_providers() {
   yq="yq"
   if ! command -v yq &>/dev/null; then
     if [ ! -e "${box_dir}/bin/yq" ]; then
-      log Debug "yq 文件未找到, 开始从 GitHub 下载"
+      log Debug "yq не найден, начало загрузки с GitHub"
       ${scripts_dir}/box.tool upyq
     fi
     yq="${box_dir}/bin/yq"
   fi
 
   if [ ! -f "${mihomo_config}" ]; then
-    log Error "配置文件不存在: ${mihomo_config}"
+    log Error "Файл конфигурации не существует: ${mihomo_config}"
     return 1
   fi
   cp "${mihomo_config}" "${mihomo_config}.bak" 2>/dev/null
   local file_count=${#name_provide_mihomo_config[@]}
   if [ "$file_count" -eq 0 ]; then
-    log Warning "没有配置的订阅文件"
+    log Warning "Файлы подписок не настроены"
     return 1
   fi
 
-  log Debug "开始更新 proxy-providers 配置项..."
+  log Debug "Начало обновления элементов конфигурации proxy-providers..."
   local config_dir="$(dirname "${mihomo_config}")"  
   
   local temp_providers="${mihomo_config}.providers.tmp"
@@ -424,7 +424,7 @@ update_mihomo_providers() {
     local escaped_url
 
     if [ -z "${provider_url}" ]; then
-      log Warning "订阅链接为空，跳过: ${provider_name}"
+      log Warning "URL подписки пустой, пропуск: ${provider_name}"
       continue
     fi
     escaped_url="$(echo "${provider_url}" | busybox sed 's/\\/\\\\/g; s/\"/\\"/g')"
@@ -437,7 +437,7 @@ update_mihomo_providers() {
       relative_path="./$(basename "${mihomo_provide_path}")/${file_name}"
     fi
 
-    log Debug "添加 provider: ${provider_name} -> ${relative_path} (http)"
+    log Debug "Добавление провайдера: ${provider_name} -> ${relative_path} (http)"
     
     cat >> "${temp_providers}" <<EOF
   ${provider_name}:
@@ -497,21 +497,21 @@ EOF
   
   rm -f "${temp_providers}"
   
-  log Debug "proxy-providers 配置构建完成"
+  log Debug "Конфигурация proxy-providers сформирована"
   return 0
 }
 
-# 检查并更新订阅
+# Проверка и обновление подписок
 upsubs() {
   if [ "${update_subscription}" != "true" ]; then
-    log Warning "更新订阅已禁用: update_subscription=\"${update_subscription}\""
+    log Warning "Обновление подписок отключено: update_subscription=\"${update_subscription}\""
     return 1
   fi
 
   yq="yq"
   if ! command -v yq &>/dev/null; then
     if [ ! -e "${box_dir}/bin/yq" ]; then
-      log Debug "yq 文件未找到, 开始从 GitHub 下载"
+      log Debug "yq не найден, начало загрузки с GitHub"
       ${scripts_dir}/box.tool upyq
     fi
     yq="${box_dir}/bin/yq"
@@ -522,19 +522,19 @@ upsubs() {
       local file_count=${#name_provide_mihomo_config[@]}
 
       if [ "$url_count" -eq 0 ]; then
-        log Warning "${bin_name} 订阅链接为空"
+        log Warning "${bin_name}: URL подписки пустой"
         return 1
       fi
 
       if [ "$url_count" -ne "$file_count" ]; then
-        log Error "订阅链接数量 (${url_count}) 与文件名数量 (${file_count}) 不匹配!"
+        log Error "Количество URL подписок (${url_count}) не совпадает с количеством имён файлов (${file_count})!"
         return 1
       fi
 
-      log Info "${bin_name} 开始更新 ${url_count} 个订阅 → $(date)"
+      log Info "${bin_name}: начало обновления ${url_count} подписок → $(date)"
       
       if [ -z "${mihomo_provide_path}" ] || ! mkdir -p "${mihomo_provide_path}"; then
-          log Error "mihomo_provide_path 未定义或无法创建目录!"
+          log Error "mihomo_provide_path не определён или директория не может быть создана!"
           return 1
       fi
 
@@ -547,141 +547,141 @@ upsubs() {
         local file_name="${name_provide_mihomo_config[$i]}"
         local provider_file="${mihomo_provide_path}/${file_name}"
         
-        log Info "--> 正在处理订阅 #${i}: ${file_name}"
+        log Info "--> Обработка подписки #${i}: ${file_name}"
 
         if [ "${renew}" = "true" ] && [ "$i" -eq 0 ]; then
-          log Info "检测到 renew=true, 仅使用第一个订阅链接更新"
+          log Info "Обнаружено renew=true, обновление только по первому URL подписки"
           if LOG_MASK_URL=mask upfile "${mihomo_config}" "${url}" "ClashMeta"; then
-            log Info "${mihomo_config} 更新成功"
+            log Info "${mihomo_config} успешно обновлён"
             if [ -f "${box_pid}" ]; then
               kill -0 "$(<"${box_pid}" 2>/dev/null)" && \
               $scripts_dir/box.service restart 2>/dev/null
             fi
-            log Info "${bin_name} 订阅更新完成 → $(date)"
+            log Info "${bin_name}: обновление подписок завершено → $(date)"
             exit 0
           else
-            log Error "${mihomo_config} 更新失败"
+            log Error "${mihomo_config}: обновление завершилось с ошибкой"
             exit 1
           fi
         fi
         
         if LOG_MASK_URL=mask upfile "${provider_file}" "${url}" "ClashMeta"; then
-          log Debug "文件大小: $(wc -c < "${provider_file}" 2>/dev/null || echo "未知") 字节"
-          log Debug "文件路径: ${provider_file}"
+          log Debug "Размер файла: $(wc -c < "${provider_file}" 2>/dev/null || echo "неизвестно") байт"
+          log Debug "Путь к файлу: ${provider_file}"
           
           local decoded_content
           decoded_content=$(base64 -d "${provider_file}" 2>/dev/null)
 
           if [ $? -eq 0 ] && echo "${decoded_content}" | grep -qE "vless://|vmess://|ss://|hysteria://|hysteria2://|anytls://|trojan://"; then
-            log Info "检测到 Base64 编码订阅, 正在解码..."
+            log Info "Обнаружена подписка в кодировке Base64, выполняется декодирование..."
             echo "${decoded_content}" > "${provider_file}"
             local proxy_count=$(echo "${decoded_content}" | grep -cE "vless://|vmess://|ss://|hysteria://|hysteria2://|anytls://|trojan://")
-            log Debug "提取到 ${proxy_count} 个代理节点"
-            log Info "订阅 #${i} (Base64解码/原始链接) 已保存"
+            log Debug "Извлечено ${proxy_count} узлов прокси"
+            log Info "Подписка #${i} (Base64-декодированная/исходный URL) сохранена"
             success_count=$((success_count + 1))
           elif ${yq} 'has("proxies")' "${provider_file}" 2>/dev/null; then
             if [ "${custom_rules_subs}" = "true" ] && [ "$rules_extracted" = "false" ]; then
               if ${yq} 'has("rules")' "${provider_file}" &>/dev/null; then
-                log Info "在 ${file_name} 中找到规则, 正在提取..."
+                log Info "Правила найдены в ${file_name}, выполняется извлечение..."
                 ${yq} '.rules' "${provider_file}" > "${mihomo_provide_rules}"
                 ${yq} -i '{"rules": .}' "${mihomo_provide_rules}"
-                log Info "规则已提取到 ${mihomo_provide_rules}"
+                log Info "Правила извлечены в ${mihomo_provide_rules}"
                 rules_extracted=true
               fi
             fi
 
-            log Debug "标准订阅格式, 正在提取 proxies 并覆盖原文件..."
+            log Debug "Стандартный формат подписки, извлечение proxies и перезапись исходного файла..."
             local temp_proxies_file
             temp_proxies_file=$(mktemp)
             
-            # 提取 proxies 数组并验证
-            log Debug "尝试提取 proxies 字段..."     
+            # Извлечь и проверить массив proxies
+            log Debug "Попытка извлечь поле proxies..."     
             if ${yq} '.proxies' "${provider_file}" > "${temp_proxies_file}" 2>/dev/null; then
               if [ -s "${temp_proxies_file}" ]; then
                 local proxy_count=$(${yq} 'length' "${temp_proxies_file}" 2>/dev/null || echo "0")
-                log Debug "提取到 ${proxy_count} 个代理节点"
+                log Debug "Извлечено ${proxy_count} узлов прокси"
                 ${yq} -i '{"proxies": .}' "${temp_proxies_file}"
                 mv "${temp_proxies_file}" "${provider_file}"
-                log Info "订阅 #${i} (标准格式) 已处理并保存"
+                log Info "Подписка #${i} (стандартный формат) обработана и сохранена"
                 success_count=$((success_count + 1))
               else
-                log Error "订阅 #${i} (${file_name}) proxies 字段为空"
+                log Error "Подписка #${i} (${file_name}): поле proxies пустое"
                 rm -f "${temp_proxies_file}" "${provider_file}"
                 update_failed=true
               fi
             else
-              log Error "订阅 #${i} (${file_name}) yq 提取 proxies 失败"
+              log Error "Подписка #${i} (${file_name}): ошибка извлечения proxies через yq"
               rm -f "${temp_proxies_file}" "${provider_file}"
               update_failed=true
             fi
 
           elif ${yq} '.. | select(tag == "!!str")' "${provider_file}" 2>/dev/null | grep -qE "vless://|vmess://|ss://|hysteria://|hysteria2://|anytls://|trojan://"; then
             local proxy_count=$(${yq} '.. | select(tag == "!!str")' "${provider_file}" 2>/dev/null | grep -cE "vless://|vmess://|ss://|hysteria://|hysteria2://|anytls://|trojan://")
-            log Debug "提取到 ${proxy_count} 个代理节点"
-            log Info "订阅 #${i} (原始链接) 已保存"
+            log Debug "Извлечено ${proxy_count} узлов прокси"
+            log Info "Подписка #${i} (исходный URL) сохранена"
             success_count=$((success_count + 1))
           else
-            log Error "订阅 #${i} (${file_name}) 格式无法识别或内容为空, 已删除"
+            log Error "Подписка #${i} (${file_name}): формат не распознан или содержимое пустое, удалена"
             rm -f "${provider_file}"
             update_failed=true
           fi
         else
-          log Error "订阅 #${i} (${file_name}) 下载失败"
+          log Error "Подписка #${i} (${file_name}): загрузка завершилась с ошибкой"
           update_failed=true
         fi
       done
 
-      log Info "成功更新 ${success_count} / ${url_count} 个订阅"
+      log Info "Успешно обновлено ${success_count} / ${url_count} подписок"
       
       if [ "${renew}" != "true" ] && [ "${success_count}" -gt 0 ]; then
         if [ "${auto_modify_config}" = "true" ]; then
-          log Info "正在更新 ${name_mihomo_config} 的 proxy-providers 配置..."
+          log Info "Обновление конфигурации proxy-providers для ${name_mihomo_config}..."
           if update_mihomo_providers; then
-            log Info "proxy-providers 配置更新成功"
+            log Info "Конфигурация proxy-providers успешно обновлена"
           else
-            log Warning "proxy-providers 配置更新失败，请手动检查配置文件"
+            log Warning "Ошибка обновления конфигурации proxy-providers, проверьте файл конфигурации вручную"
           fi
         else
-          log Info "auto_modify_config 未启用，跳过更新 proxy-providers 配置"
+          log Info "auto_modify_config не включён, пропуск обновления конфигурации proxy-providers"
         fi
       fi
       
       if [ "${update_failed}" = "true" ]; then
-        log Error "部分订阅链接更新失败"
+        log Error "Некоторые URL подписок не удалось обновить"
         return 1
       else
-        log Info "更新订阅于 $(date +"%F %R")"
+        log Info "Подписки обновлены $(date +"%F %R")"
         return 0
       fi
       ;;
     "sing-box")
       update_file_name="${sing_config}"
       if [ -n "${subscription_url_singbox}" ]; then
-        log Info "${bin_name} 每日更新订阅 → $(date)"
-        log Debug "正在下载 ${update_file_name}"
+        log Info "${bin_name}: ежедневное обновление подписок → $(date)"
+        log Debug "Загрузка ${update_file_name}"
         if upfile "${update_file_name}" "${subscription_url_singbox}" "sing-box"; then
-          log Info "${update_file_name} 已保存"
-          log Info "更新订阅于 $(date +"%F %R")"
+          log Info "${update_file_name} сохранён"
+          log Info "Подписки обновлены $(date +"%F %R")"
           if [ -f "${box_pid}" ]; then
             kill -0 "$(<"${box_pid}" 2>/dev/null)" && \
             $scripts_dir/box.service restart 2>/dev/null
           fi
           return 0
         else
-          log Error "更新订阅失败"
+          log Error "Ошибка обновления подписок"
           return 1
         fi
       else
-        log Warning "${bin_name} 订阅链接为空..."
+        log Warning "${bin_name}: URL подписки пустой..."
         return 1
       fi
       ;;
     "xray"|"v2fly"|"hysteria")
-      log Warning "${bin_name} 不支持订阅功能.."
+      log Warning "${bin_name} не поддерживает функцию подписок.."
       return 1
       ;;
     *)
-      log Error "<${bin_name}> 未知的二进制文件."
+      log Error "<${bin_name}> Неизвестный бинарный файл."
       return 1
       ;;
   esac
@@ -692,7 +692,7 @@ upkernel() {
   
   local core_to_update="$1"
   if [ -z "$core_to_update" ]; then
-    log Error "upkernel: 未提供核心名称"
+    log Error "upkernel: имя ядра не указано"
     return 1
   fi
 
@@ -712,17 +712,17 @@ upkernel() {
     "armv7l"|"armv8l") arch="armv7"; platform="linux" ;;
     "i686") arch="386"; platform="linux" ;;
     "x86_64") arch="amd64"; platform="linux" ;;
-    *) log Warning "不支持的架构: $(uname -m)" >&2; return 1 ;;
+    *) log Warning "Неподдерживаемая архитектура: $(uname -m)" >&2; return 1 ;;
   esac
   
   local file_kernel="${core_to_update}-${arch}"
   case "${core_to_update}" in
     "mihomo_smart")
-      log Info "正在更新 mihomo-smart 核心 (来自 vernesong/mihomo)"
+      log Info "Обновление ядра mihomo-smart (из vernesong/mihomo)"
       local arch_smart
       case $(uname -m) in
         "aarch64") arch_smart="arm64-v8" ;;
-        *) log Error "mihomo-smart 当前仅支持 aarch64 架构"; return 1 ;;
+        *) log Error "mihomo-smart в настоящее время поддерживает только архитектуру aarch64"; return 1 ;;
       esac
 
       local release_page_url="https://github.com/vernesong/mihomo/releases/expanded_assets/Prerelease-Alpha"
@@ -731,14 +731,14 @@ upkernel() {
       local smart_version_tag=$($rev1 "${release_page_url}" | busybox grep -oE "smart-[a-f0-9]+" | head -1)
 
       if [ -z "$smart_version_tag" ]; then
-        log Error "获取 mihomo-smart 最新版本标签失败"
+        log Error "Не удалось получить метку последней версии mihomo-smart"
         return 1
       fi
 
       local download_link="https://github.com/vernesong/mihomo/releases/download/Prerelease-Alpha/mihomo-android-${arch_smart}-alpha-${smart_version_tag}.gz"
       local file_kernel="${core_to_update}-${arch_smart}"
       
-      log Debug "下载 ${download_link}"
+      log Debug "Загрузка ${download_link}"
       upfile "${box_dir}/${file_kernel}.gz" "${download_link}" && xkernel "$core_to_update" "" "" "" "$file_kernel"
       ;;
     "sing-box")
@@ -746,20 +746,20 @@ upkernel() {
       url_down="https://github.com/SagerNet/sing-box/releases"
 
       if [ "${singbox_stable}" = "disable" ]; then
-        log Debug "下载 ${core_to_update} 预发行版"
+        log Debug "Загрузка предрелизной версии ${core_to_update}"
         latest_version=$($rev1 "${api_url}" | grep "tag_name" | busybox grep -oE "v[0-9].*" | head -1 | cut -d'"' -f1)
       else
-        log Debug "下载 ${core_to_update} 最新稳定版"
+        log Debug "Загрузка последней стабильной версии ${core_to_update}"
         latest_version=$($rev1 "${api_url}/latest" | grep "tag_name" | busybox grep -oE "v[0-9.]*" | head -1)
       fi
 
       if [ -z "$latest_version" ]; then
-        log Error "获取 sing-box 最新 稳定版/测试版/Alpha版 失败"
+        log Error "Не удалось получить последнюю стабильную/бета/альфа версию sing-box"
         return 1
       fi
 
       download_link="${url_down}/download/${latest_version}/sing-box-${latest_version#v}-${platform}-${arch}.tar.gz"
-      log Debug "下载 ${download_link}"
+      log Debug "Загрузка ${download_link}"
       upfile "${box_dir}/${file_kernel}.tar.gz" "${download_link}" && xkernel "$core_to_update" "$platform" "$arch" "$latest_version" "$file_kernel"
       ;;
     "mihomo")
@@ -777,7 +777,7 @@ upkernel() {
       fi
 
       if [ -z "$latest_version" ]; then
-        log Error "获取 mihomo 最新 稳定版/预发行版 失败"
+        log Error "Не удалось получить последнюю стабильную/предрелизную версию mihomo"
         return 1
       fi
 
@@ -787,7 +787,7 @@ upkernel() {
       fi
 
       filename="mihomo-${platform}-${arch}-${latest_version}"
-      log Debug "下载 ${download_link}/download/${tag}/${filename}.gz"
+      log Debug "Загрузка ${download_link}/download/${tag}/${filename}.gz"
       upfile "${box_dir}/${file_kernel}.gz" "${download_link}/download/${tag}/${filename}.gz" && xkernel "$core_to_update" "" "" "" "$file_kernel"
       ;;
     "xray"|"v2fly")
@@ -796,7 +796,7 @@ upkernel() {
       latest_version=$($rev1 ${api_url} | grep "tag_name" | busybox grep -oE "v[0-9.]*" | head -1)
 
       if [ -z "$latest_version" ]; then
-        log Error "获取 ${core_to_update} 最新版本号失败"
+        log Error "Не удалось получить номер последней версии ${core_to_update}"
         return 1
       fi
 
@@ -805,10 +805,10 @@ upkernel() {
         "x86_64") download_file="$bin-linux-64.zip" ;;
         "armv7l"|"armv8l") download_file="$bin-linux-arm32-v7a.zip" ;;
         "aarch64") download_file="$bin-android-arm64-v8a.zip" ;;
-        *) log Error "不支持的架构: $(uname -m)" >&2; return 1 ;;
+        *) log Error "Неподдерживаемая архитектура: $(uname -m)" >&2; return 1 ;;
       esac
       download_link="https://github.com/$(if [ "${core_to_update}" = "xray" ]; then echo "XTLS/Xray-core/releases"; else echo "v2fly/v2ray-core/releases"; fi)"
-      log Debug "正在下载 ${download_link}/download/${latest_version}/${download_file}"
+      log Debug "Загрузка ${download_link}/download/${latest_version}/${download_file}"
       upfile "${box_dir}/${file_kernel}.zip" "${download_link}/download/${latest_version}/${download_file}" && xkernel "$core_to_update" "" "" "" "$file_kernel"
       ;;
     "hysteria")
@@ -819,7 +819,7 @@ upkernel() {
         "i686") arch="386" ;;
         "x86_64") arch="amd64" ;;
         *)
-          log Warning "不支持的架构: $(uname -m)"
+          log Warning "Неподдерживаемая архитектура: $(uname -m)"
           return 1
           ;;
       esac
@@ -830,17 +830,17 @@ upkernel() {
       local latest_version=$($rev1 "https://api.github.com/repos/apernet/hysteria/releases" | grep "tag_name" | grep -oE "[0-9.].*" | head -1 | sed 's/,//g' | cut -d '"' -f 1)
 
       if [ -z "$latest_version" ]; then
-        log Error "获取 hysteria 最新版本号失败"
+        log Error "Не удалось получить номер последней версии hysteria"
         return 1
       fi
 
       local download_link="https://github.com/apernet/hysteria/releases/download/app%2Fv${latest_version}/hysteria-android-${arch}"
 
-      log Debug "正在下载 ${download_link}"
+      log Debug "Загрузка ${download_link}"
       upfile "${bin_dir}/hysteria" "${download_link}" && xkernel "$core_to_update"
       ;;
     *)
-      log Error "<${core_to_update}> 未知的二进制文件."
+      log Error "<${core_to_update}> Неизвестный бинарный файл."
       return 1
       ;;
   esac
@@ -875,9 +875,9 @@ xkernel() {
       fi
 
       if ${gunzip_command} -f "${box_dir}/${file_kernel}.gz" >&2 && mv "${box_dir}/${file_kernel}" "${bin_dir}/${target_bin_name}"; then
-        log Info "${target_bin_name} 已成功更新 (来自: ${core_to_process})"
+        log Info "${target_bin_name} успешно обновлён (из: ${core_to_process})"
       else
-        log Error "解压或移动 ${target_bin_name} 核心失败."
+        log Error "Ошибка распаковки или перемещения ядра ${target_bin_name}."
         bin_name=$original_bin_name
         return 1
       fi
@@ -887,17 +887,17 @@ xkernel() {
       if ! command -v tar >/dev/null; then
         tar_command="busybox tar"
       fi
-      log Info "正在解压 Sing-Box 核心..."
+      log Info "Распаковка ядра Sing-Box..."
       if ${tar_command} -xf "${box_dir}/${file_kernel}.tar.gz" -C "${bin_dir}" >/dev/null; then
         mv "${bin_dir}/sing-box-${latest_version#v}-${platform}-${arch}/sing-box" "${bin_dir}/${core_to_process}"
         if [ -f "${box_pid}" ]; then
           rm -rf /data/adb/box/sing-box/cache.db
           restart_box "$core_to_process"
         else
-          log Debug "${core_to_process} 无需重启."
+          log Debug "${core_to_process}: перезапуск не требуется."
         fi
       else
-        log Error "解压 ${box_dir}/${file_kernel}.tar.gz 失败."
+        log Error "Ошибка распаковки ${box_dir}/${file_kernel}.tar.gz."
       fi
       [ -d "${bin_dir}/sing-box-${latest_version#v}-${platform}-${arch}" ] && \
         rm -r "${bin_dir}/sing-box-${latest_version#v}-${platform}-${arch}"
@@ -913,17 +913,17 @@ xkernel() {
       fi
 
       mkdir -p "${bin_dir}/update"
-      log Info "正在解压 ${bin} 核心..."
+      log Info "Распаковка ядра ${bin}..."
       if ${unzip_command} -oq "${box_dir}/${file_kernel}.zip" "${bin}" -d "${bin_dir}/update"; then
         if mv "${bin_dir}/update/${bin}" "${bin_dir}/${core_to_process}"; then
-          true # 成功
+          true # Success
         else
-          log Error "移动核心失败."
+          log Error "Ошибка перемещения ядра."
           rm -rf "${bin_dir}/update"
           return 1
         fi
       else
-        log Error "解压 ${box_dir}/${file_kernel}.zip 失败."
+        log Error "Ошибка распаковки ${box_dir}/${file_kernel}.zip."
         rm -rf "${bin_dir}/update"
         return 1
       fi
@@ -933,7 +933,7 @@ xkernel() {
       true
       ;;
     *)
-      log Error "<${core_to_process}> 未知的二进制文件."
+      log Error "<${core_to_process}> Неизвестный бинарный файл."
       bin_name=$original_bin_name
       return 1
       ;;
@@ -946,13 +946,13 @@ xkernel() {
   
   if [ -f "${box_pid}" ]; then
     if [ "$original_bin_name" = "$target_bin_name" ]; then
-      log Info "检测到正在运行的核心已被更新，将自动重启服务..."
+      log Info "Обнаружено обновление работающего ядра, служба будет автоматически перезапущена..."
       restart_box "$target_bin_name"
     else
-      log Info "${target_bin_name} 已更新，但当前运行的是 ${original_bin_name}，无需重启。"
+      log Info "${target_bin_name} обновлён, но в настоящее время работает ${original_bin_name}, перезапуск не требуется."
     fi
   else
-    log Info "服务未在运行，无需重启。"
+    log Info "Служба не запущена, перезапуск не требуется."
   fi
   
   bin_name=$original_bin_name
@@ -971,9 +971,9 @@ upxui() {
     
     if [ -z "${ui_path}" ]; then
       ui_path="./dashboard"
-      log Warning "配置文件中未找到 external-ui/external_ui 字段，使用默认路径: ${ui_path}"
+      log Warning "Поле external-ui/external_ui не найдено в файле конфигурации, используется путь по умолчанию: ${ui_path}"
     fi
-    log Debug "配置文件中的 UI 路径: ${ui_path}"
+    log Debug "Путь к UI из файла конфигурации: ${ui_path}"
     
     local dashboard_dir
     if [[ "${ui_path}" == ./* ]]; then
@@ -983,7 +983,7 @@ upxui() {
     else
       dashboard_dir="${box_dir}/${bin_name}/${ui_path}"
     fi
-    log Info "Dashboard 目标目录: ${dashboard_dir}"
+    log Info "Целевая директория дашборда: ${dashboard_dir}"
     
     file_dashboard="${box_dir}/${bin_name}_dashboard.zip"
     if [ -n "${ui_url}" ]; then
@@ -994,10 +994,10 @@ upxui() {
     
     if upfile "${file_dashboard}" "${url}"; then
       if [ ! -d "${dashboard_dir}" ]; then
-        log Info "面板文件夹不存在, 正在创建: ${dashboard_dir}"
+        log Info "Папка дашборда не существует, создание: ${dashboard_dir}"
         mkdir -p "${dashboard_dir}"
       else
-        log Debug "清理现有面板文件: ${dashboard_dir}"
+        log Debug "Очистка существующих файлов дашборда: ${dashboard_dir}"
         rm -rf "${dashboard_dir}/"*
       fi
       
@@ -1007,7 +1007,7 @@ upxui() {
         unzip_command="busybox unzip"
       fi
       
-      log Info "正在解压 Dashboard..."
+      log Info "Распаковка дашборда..."
       local temp_extract_dir="${box_dir}/${bin_name}_dashboard_temp"
       rm -rf "${temp_extract_dir}"
       mkdir -p "${temp_extract_dir}"
@@ -1029,28 +1029,28 @@ upxui() {
           fi
         fi
       else
-        log Error "解压 Dashboard 失败"
+        log Error "Ошибка распаковки дашборда"
         rm -f "${file_dashboard}"
         rm -rf "${temp_extract_dir}"
         return 1
       fi
 
       if [ -z "$(find "${dashboard_dir}" -mindepth 1 -maxdepth 1 | head -n 1)" ]; then
-        log Error "Dashboard 目录为空，更新失败"
+        log Error "Директория дашборда пуста, обновление не выполнено"
         rm -f "${file_dashboard}"
         rm -rf "${temp_extract_dir}"
         return 1
       fi
       rm -f "${file_dashboard}"
       rm -rf "${temp_extract_dir}"
-      log Info "Dashboard 更新成功 → ${dashboard_dir}"
+      log Info "Дашборд успешно обновлён → ${dashboard_dir}"
     else
-      log Error "下载 Dashboard 失败"
+      log Error "Ошибка загрузки дашборда"
       return 1
     fi
     return 0
   else
-    log Debug "${bin_name} 不支持面板"
+    log Debug "${bin_name} не поддерживает дашборд"
     return 1
   fi
 }
@@ -1060,20 +1060,20 @@ cgroup_blkio() {
   local fallback_weight="${2:-900}"
 
   if [ -z "$pid_file" ] || [ ! -f "$pid_file" ]; then
-    log Warning "PID 文件丢失或无效: $pid_file"
+    log Warning "Файл PID отсутствует или недействителен: $pid_file"
     return 1
   fi
 
   local PID=$(<"$pid_file" 2>/dev/null)
   if [ -z "$PID" ] || ! kill -0 "$PID" >/dev/null 2>&1; then
-    log Warning "来自 ${pid_file} 的 PID $PID 无效或未运行"
+    log Warning "PID $PID из ${pid_file} недействителен или не запущен"
     return 1
   fi
 
   if [ -z "$blkio_path" ]; then
     blkio_path=$(mount | grep cgroup | busybox awk '/blkio/{print $3}' | head -1)
     if [ -z "$blkio_path" ] || [ ! -d "$blkio_path" ]; then
-      log Warning "blkio cgroup 路径未找到"
+      log Warning "Путь к blkio cgroup не найден"
       return 1
     fi
   fi
@@ -1083,34 +1083,34 @@ cgroup_blkio() {
   if [ ! -d "$target" ]; then
     mkdir -p "$target" 2>/dev/null
     if [ ! -d "$target" ]; then
-      log Warning "无法创建 box blkio 目录: $target"
+      log Warning "Не удалось создать директорию box blkio: $target"
       if [ -d "${blkio_path}/foreground" ]; then
         target="${blkio_path}/foreground"
-        log Info "回退使用现有 blkio 目录: foreground"
+        log Info "Используется существующая директория blkio: foreground"
       elif [ -d "${blkio_path}/top-app" ]; then
         target="${blkio_path}/top-app"
-        log Info "回退使用现有 blkio 目录: top-app"
+        log Info "Используется существующая директория blkio: top-app"
       else
-        log Warning "blkio 目标未找到，无法设置 IO 权重"
+        log Warning "Цель blkio не найдена, задать вес IO невозможно"
         return 1
       fi
     else
-      log Info "成功创建专用 box blkio 目录: $target"
+      log Info "Создана выделенная директория box blkio: $target"
       echo "$fallback_weight" > "${target}/blkio.weight" 2>/dev/null
       if [ $? -ne 0 ]; then
-        log Warning "无法设置 blkio 权重到 ${target}/blkio.weight"
+        log Warning "Не удалось задать вес blkio в ${target}/blkio.weight"
       else
-        log Info "已设置 blkio 权重: $fallback_weight"
+        log Info "Вес blkio задан: $fallback_weight"
       fi
     fi
   fi
 
   echo "$PID" > "${target}/cgroup.procs" 2>/dev/null
   if [ $? -eq 0 ]; then
-    log Info "已分配 PID $PID 到 ${target}，IO 权重 [$fallback_weight]"
+    log Info "PID $PID назначен в ${target}, вес IO [$fallback_weight]"
     return 0
   else
-    log Warning "无法将 PID $PID 分配到 ${target}"
+    log Warning "Не удалось назначить PID $PID в ${target}"
     return 1
   fi
 }
@@ -1120,12 +1120,12 @@ cgroup_memcg() {
   local raw_limit="$2"
 
   if [ -z "$pid_file" ] || [ ! -f "$pid_file" ]; then
-    log Warning "PID 文件丢失或无效: $pid_file"
+    log Warning "Файл PID отсутствует или недействителен: $pid_file"
     return 1
   fi
 
   if [ -z "$raw_limit" ]; then
-    log Warning "未指定 memcg 限制"
+    log Warning "Ограничение memcg не указано"
     return 1
   fi
 
@@ -1144,7 +1144,7 @@ cgroup_memcg() {
       limit=$raw_limit
       ;;
     *)
-      log Warning "无效的 memcg 限制格式: $raw_limit"
+      log Warning "Недопустимый формат ограничения memcg: $raw_limit"
       return 1
       ;;
   esac
@@ -1152,14 +1152,14 @@ cgroup_memcg() {
   local PID
   PID=$(<"$pid_file" 2>/dev/null)
   if [ -z "$PID" ] || ! kill -0 "$PID" >/dev/null 2>&1; then
-    log Warning "来自 ${pid_file} 的 PID $PID 无效或未运行"
+    log Warning "PID $PID из ${pid_file} недействителен или не запущен"
     return 1
   fi
 
   if [ -z "$memcg_path" ]; then
     memcg_path=$(mount | grep cgroup | busybox awk '/memory/{print $3}' | head -1)
     if [ -z "$memcg_path" ] || [ ! -d "$memcg_path" ]; then
-      log Warning "memory cgroup 路径未找到"
+      log Warning "Путь к memory cgroup не найден"
       return 1
     fi
   fi
@@ -1169,17 +1169,17 @@ cgroup_memcg() {
   if [ ! -d "$target" ]; then
     mkdir -p "$target" 2>/dev/null
     if [ ! -d "$target" ]; then
-      log Warning "无法创建 box memory 目录: $target"
+      log Warning "Не удалось создать директорию box memory: $target"
       local name="${bin_name:-app}"
       target="${memcg_path}/${name}"
       mkdir -p "$target" 2>/dev/null
       if [ ! -d "$target" ]; then
-        log Warning "无法创建 memory 目录: $target"
+        log Warning "Не удалось создать директорию memory: $target"
         return 1
       fi
-      log Info "回退使用 memory 目录: $target"
+      log Info "Используется директория memory: $target"
     else
-      log Info "成功创建专用 box memory 目录: $target"
+      log Info "Создана выделенная директория box memory: $target"
     fi
   fi
 
@@ -1194,17 +1194,17 @@ cgroup_memcg() {
 
   echo "$limit" > "${target}/memory.limit_in_bytes" 2>/dev/null
   if [ $? -ne 0 ]; then
-    log Warning "无法设置内存限制到 ${target}/memory.limit_in_bytes"
+    log Warning "Не удалось задать ограничение памяти в ${target}/memory.limit_in_bytes"
     return 1
   fi
-  log Info "已设置内存限制: ${hr_limit} (${limit} 字节)"
+  log Info "Ограничение памяти задано: ${hr_limit} (${limit} байт)"
 
   echo "$PID" > "${target}/cgroup.procs" 2>/dev/null
   if [ $? -eq 0 ]; then
-    log Info "已分配 PID $PID 到 ${target}，内存限制 [$hr_limit]"
+    log Info "PID $PID назначен в ${target}, ограничение памяти [$hr_limit]"
     return 0
   else
-    log Warning "无法将 PID $PID 分配到 ${target}"
+    log Warning "Не удалось назначить PID $PID в ${target}"
     return 1
   fi
 }
@@ -1214,14 +1214,14 @@ cgroup_cpuset() {
   local cores="${2}"
 
   if [ -z "${pid_file}" ] || [ ! -f "${pid_file}" ]; then
-    log Warning "PID 文件丢失或无效: ${pid_file}"
+    log Warning "Файл PID отсутствует или недействителен: ${pid_file}"
     return 1
   fi
 
   local PID
   PID=$(<"${pid_file}" 2>/dev/null)
   if [ -z "$PID" ] || ! kill -0 "$PID" >/dev/null; then
-    log Warning "来自 ${pid_file} 的 PID $PID 无效或未运行"
+    log Warning "PID $PID из ${pid_file} недействителен или не запущен"
     return 1
   fi
 
@@ -1229,7 +1229,7 @@ cgroup_cpuset() {
     local total_core
     total_core=$(nproc --all 2>/dev/null)
     if [ -z "$total_core" ] || [ "$total_core" -le 0 ]; then
-      log Warning "检测 CPU 核心失败"
+      log Warning "Ошибка определения ядер CPU"
       return 1
     fi
     cores="0-$((total_core - 1))"
@@ -1238,7 +1238,7 @@ cgroup_cpuset() {
   if [ -z "${cpuset_path}" ]; then
     cpuset_path=$(mount | grep cgroup | busybox awk '/cpuset/{print $3}' | head -1)
     if [ -z "${cpuset_path}" ] || [ ! -d "${cpuset_path}" ]; then
-      log Warning "cpuset_path 未找到"
+      log Warning "cpuset_path не найден"
       return 1
     fi
   fi
@@ -1248,7 +1248,7 @@ cgroup_cpuset() {
   if [ ! -d "${cpuset_target}" ]; then
     mkdir -p "${cpuset_target}" 2>/dev/null
     if [ ! -d "${cpuset_target}" ]; then
-      log Warning "无法创建 box cpuset 目录: ${cpuset_target}"
+      log Warning "Не удалось создать директорию box cpuset: ${cpuset_target}"
       cpuset_target="${cpuset_path}/foreground"
       if [ ! -d "${cpuset_target}" ]; then
         cpuset_target="${cpuset_path}/top-app"
@@ -1256,13 +1256,13 @@ cgroup_cpuset() {
       if [ ! -d "${cpuset_target}" ]; then
         cpuset_target="${cpuset_path}/apps"
         if [ ! -d "${cpuset_target}" ]; then
-          log Warning "cpuset 目标未找到，无法设置 CPU 核心"
+          log Warning "Цель cpuset не найдена, задать ядра CPU невозможно"
           return 1
         fi
       fi
-      log Info "回退使用现有 cpuset 目录: ${cpuset_target}"
+      log Info "Используется существующая директория cpuset: ${cpuset_target}"
     else
-      log Info "成功创建专用 box cpuset 目录: ${cpuset_target}"
+      log Info "Создана выделенная директория box cpuset: ${cpuset_target}"
       if [ -f "${cpuset_path}/cpus" ]; then
         cat "${cpuset_path}/cpus" > "${cpuset_target}/cpus" 2>/dev/null
       fi
@@ -1274,22 +1274,22 @@ cgroup_cpuset() {
 
   echo "${cores}" > "${cpuset_target}/cpus" 2>/dev/null
   if [ $? -ne 0 ]; then
-    log Warning "无法设置 CPU 核心到 ${cpuset_target}/cpus"
+    log Warning "Не удалось задать ядра CPU в ${cpuset_target}/cpus"
     return 1
   fi
   
   echo "0" > "${cpuset_target}/mems" 2>/dev/null
   if [ $? -ne 0 ]; then
-    log Warning "无法设置内存节点到 ${cpuset_target}/mems"
+    log Warning "Не удалось задать узлы памяти в ${cpuset_target}/mems"
     return 1
   fi
 
   echo "${PID}" > "${cpuset_target}/cgroup.procs" 2>/dev/null
   if [ $? -eq 0 ]; then
-    log Info "已分配 PID $PID 到 ${cpuset_target}，CPU 核心 [$cores]"
+    log Info "PID $PID назначен в ${cpuset_target}, ядра CPU [$cores]"
     return 0
   else
-    log Warning "无法将 PID $PID 分配到 ${cpuset_target}"
+    log Warning "Не удалось назначить PID $PID в ${cpuset_target}"
     return 1
   fi
 }
@@ -1315,7 +1315,7 @@ webroot() {
   <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>不支持WebUI</title>
+      <title>WebUI не поддерживается</title>
       <style>
           body {
               font-family: Arial, sans-serif;
@@ -1328,23 +1328,23 @@ webroot() {
       </style>
   </head>
   <body>
-      <h1>不支持WebUI</h1>
-      <p>抱歉，xray/v2ray 不支持所需的WebUI功能。</p>
+      <h1>WebUI не поддерживается</h1>
+      <p>Извините, xray/v2ray не поддерживает требуемую функциональность WebUI.</p>
   </body>
   </html>' > $path_webroot
   fi
-  log Info "已生成/更新 WebUI 页面: ${path_webroot} → http://${ip_port}/ui/ (内核: ${bin_name})"
+  log Info "Страница WebUI создана/обновлена: ${path_webroot} → http://${ip_port}/ui/ (ядро: ${bin_name})"
 }
 
 bond0() {
   sysctl -w net.ipv4.tcp_low_latency=0 >/dev/null 2>&1
-  log Debug "tcp 低延迟: 0"
+  log Debug "tcp низкая задержка: 0"
 
   for dev in /sys/class/net/wlan*; do ip link set dev $(basename $dev) txqueuelen 3000; done
-  log Debug "wlan* 传输队列长度: 3000"
+  log Debug "wlan* длина очереди передачи: 3000"
 
   for txqueuelen in /sys/class/net/rmnet_data*; do txqueuelen_name=$(basename $txqueuelen); ip link set dev $txqueuelen_name txqueuelen 1000; done
-  log Debug "rmnet_data* 传输队列长度: 1000"
+  log Debug "rmnet_data* длина очереди передачи: 1000"
 
   for mtu in /sys/class/net/rmnet_data*; do mtu_name=$(basename $mtu); ip link set dev $mtu_name mtu 1500; done
   log Debug "rmnet_data* MTU: 1500"
@@ -1352,13 +1352,13 @@ bond0() {
 
 bond1() {
   sysctl -w net.ipv4.tcp_low_latency=1 >/dev/null 2>&1
-  log Debug "tcp 低延迟: 1"
+  log Debug "tcp низкая задержка: 1"
 
   for dev in /sys/class/net/wlan*; do ip link set dev $(basename $dev) txqueuelen 4000; done
-  log Debug "wlan* 传输队列长度: 4000"
+  log Debug "wlan* длина очереди передачи: 4000"
 
   for txqueuelen in /sys/class/net/rmnet_data*; do txqueuelen_name=$(basename $txqueuelen); ip link set dev $txqueuelen_name txqueuelen 2000; done
-  log Debug "rmnet_data* 传输队列长度: 2000"
+  log Debug "rmnet_data* длина очереди передачи: 2000"
 
   for mtu in /sys/class/net/rmnet_data*; do mtu_name=$(basename $mtu); ip link set dev $mtu_name mtu 9000; done
   log Debug "rmnet_data* MTU: 9000"
@@ -1440,8 +1440,8 @@ case "$1" in
     done
     ;;
   *)
-    log Error "$0 $1 未找到"
-    log Info "用法: $0 {check|memcg|cpuset|blkio|geosub|geox|subs|upkernel [name]|upkernels [name...]|upgeox_all|upxui|upyq|upcurl|upcnip|reload|webroot|bond0|bond1|all}"
-    log Info "upkernel 支持的核心: sing-box, mihomo, mihomo_smart, xray, v2fly, hysteria"
+    log Error "$0 $1 не найден"
+    log Info "Использование: $0 {check|memcg|cpuset|blkio|geosub|geox|subs|upkernel [name]|upkernels [name...]|upgeox_all|upxui|upyq|upcurl|upcnip|reload|webroot|bond0|bond1|all}"
+    log Info "Поддерживаемые ядра для upkernel: sing-box, mihomo, mihomo_smart, xray, v2fly, hysteria"
     ;;
 esac
