@@ -163,7 +163,7 @@ box_permission() {
   if [[ "${box_user_group}" == @(root:net_admin|0:3005) && -f "${bin_path}" ]]; then
     # Set kernel directory permissions and owner
     box_ownership
-    log Info "Using kernel ${bin_path}。"
+    log Info "Using kernel ${bin_path}."
   else
     if  [[ "${box_user_group}" != @(root:net_admin|0:3005) ]]; then
       log Error "Unsupported user group [ \"${box_user_group}\" ]"
@@ -171,7 +171,7 @@ box_permission() {
       log Debug "Automatically switched to [ root:net_admin ]; please restart Box."
       exit 1
     fi
-    log Error "Kernel not detected: [ \"${bin_name}\" ]。"
+    log Error "Kernel not detected: [ \"${bin_name}\" ]."
     log Error "Please download [ \"${bin_name}\" ] kernel and place it in \"${bin_dir}/\"."
     log Debug "Run 'su -c \"${scripts_dir}/box.tool upkernel\"' in terminal to download kernel"
     set_description error "Kernel does not exist"

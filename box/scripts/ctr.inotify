@@ -41,7 +41,7 @@ check_stability_window() {
   [ -f "$STATE_FILE" ] && last=$(cat "$STATE_FILE" 2>/dev/null || echo 0)
   
   if [ $((current - last)) -lt $STABILITY_WINDOW ]; then
-    log_msg "跳过: 稳定窗口内 ($((current - last))秒)"
+    log_msg "Skip: within stability window ($((current - last))s)"
     exit 0
   fi
   
@@ -54,24 +54,24 @@ is_service_running() {
 
 start_service() {
   if is_service_running; then
-    log_msg "[跳过] 服务已在运行"
+    log_msg "[Skip] Service is already running"
     return 0
   fi
   
   "${SCRIPTS_DIR}/box.service" start
   "${SCRIPTS_DIR}/box.iptables" enable
-  log_msg "[启动] 服务已启动"
+  log_msg "[Start] Service started"
 }
 
 stop_service() {
   if ! is_service_running; then
-    log_msg "[跳过] 服务已停止"
+    log_msg "[Skip] Service is already stopped"
     return 0
   fi
   
   "${SCRIPTS_DIR}/box.iptables" disable
   "${SCRIPTS_DIR}/box.service" stop
-  log_msg "[停止] 服务已停止"
+  log_msg "[Stop] Service stopped"
 }
 
 save_wifi_state() {
