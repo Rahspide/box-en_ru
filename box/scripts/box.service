@@ -163,7 +163,7 @@ box_permission() {
   if [[ "${box_user_group}" == @(root:net_admin|0:3005) && -f "${bin_path}" ]]; then
     # Установить права и владельца каталога ядра
     box_ownership
-    log Info "Используется ядро ${bin_path}。"
+    log Info "Используется ядро ${bin_path}."
   else
     if  [[ "${box_user_group}" != @(root:net_admin|0:3005) ]]; then
       log Error "Неподдерживаемая группа пользователей [ \"${box_user_group}\" ]"
@@ -171,7 +171,7 @@ box_permission() {
       log Debug "Автоматически переключено на [ root:net_admin ]; перезапустите Box."
       exit 1
     fi
-    log Error "Ядро не обнаружено: [ \"${bin_name}\" ]。"
+    log Error "Ядро не обнаружено: [ \"${bin_name}\" ]."
     log Error "Загрузите [ \"${bin_name}\" ] ядро и поместите в \"${bin_dir}/\"."
     log Debug "Выполните в терминале 'su -c \"${scripts_dir}/box.tool upkernel\"' для загрузки ядра"
     set_description error "Ядро не существует"

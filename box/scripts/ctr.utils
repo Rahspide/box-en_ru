@@ -20,7 +20,7 @@ get_wifi_iface() {
   echo "wlan0"
 }
 
-# 获取当前 WiFi SSID
+# Получить текущий SSID WiFi
 get_current_ssid() {
   local ssid
   local iface
@@ -39,7 +39,7 @@ get_current_ssid() {
   fi
 }
 
-# 获取当前 WiFi BSSID
+# Получить текущий BSSID WiFi
 get_current_bssid() {
   local bssid
   local iface
@@ -62,7 +62,7 @@ get_current_bssid() {
   fi
 }
 
-# 检查 WiFi 是否连接
+# Проверить подключение WiFi
 is_wifi_connected() {
   local iface
   iface=$(get_wifi_iface)
@@ -75,7 +75,7 @@ is_wifi_connected() {
   echo "not_wifi"
 }
 
-# 获取 WiFi IP 地址
+# Получить IP-адрес WiFi
 get_wifi_ip() {
   local iface
   iface=$(get_wifi_iface)
@@ -83,7 +83,7 @@ get_wifi_ip() {
   ip addr show "$iface" 2>/dev/null | busybox awk '/inet /{print $2}' | cut -d/ -f1 | head -n1
 }
 
-# 检查 SSID 是否在列表中
+# Проверить, есть ли SSID в списке
 is_ssid_in_list() {
   local ssid="$1"
   local item
@@ -95,7 +95,7 @@ is_ssid_in_list() {
   return 1
 }
 
-# 检查 BSSID 是否在列表中
+# Проверить, есть ли BSSID в списке
 is_bssid_in_list() {
   local bssid="$1"
   local item

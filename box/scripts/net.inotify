@@ -1,6 +1,6 @@
 #!/system/bin/sh
 
-# 检查模块是否已禁用
+# Проверить, отключён ли модуль
 if [ -f "/data/adb/modules/box_for_root/disable" ]; then
     exit 0
 fi
@@ -93,9 +93,9 @@ rules_add() {
     ensure_rule_append "${iptables}" nat LOCAL_IP_V4 -d "${local_ipv4}" -j ACCEPT
     rv2=$?
     if [ "${rv1}" = "0" ] || [ "${rv2}" = "0" ]; then
-      log_info "本地IP ${local_ipv4}，防环回规则已更新"
+      log_info "Локальный IP ${local_ipv4}, правила предотвращения петель обновлены"
     else
-      log_warn "本地IP ${local_ipv4}，防环回规则更新失败"
+      log_warn "Локальный IP ${local_ipv4}, ошибка обновления правил предотвращения петель"
     fi
   done
 
@@ -105,9 +105,9 @@ rules_add() {
     ensure_rule_append "${ip6tables}" mangle LOCAL_IP_V6 -d "${local_ipv6}" -j ACCEPT
     rv6=$?
     if [ "${rv6}" = "0" ]; then
-      log_info "本地IP ${local_ipv6}，防环回规则已更新"
+      log_info "Локальный IP ${local_ipv6}, правила предотвращения петель обновлены"
     else
-      log_warn "本地IP ${local_ipv6}，防环回规则更新失败"
+      log_warn "Локальный IP ${local_ipv6}, ошибка обновления правил предотвращения петель"
     fi
   done
 }
