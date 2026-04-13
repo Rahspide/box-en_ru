@@ -4,13 +4,13 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: '发布标签'
+        description: 'Тег релиза'
         required: true
       branch:
-        description: '目标分支（用于版本文件更新）'
+        description: 'Целевая ветка (для обновления файла версии)'
         required: true
       changelog:
-        description: '更新日志内容 (用 | 分隔多个项目)'
+        description: 'Содержимое журнала изменений (используйте | для разделения нескольких пунктов)'
         required: true
         type: string
 

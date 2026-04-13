@@ -111,17 +111,17 @@ jobs:
           tag_name: debug
           name: "Debug Build - ${{ steps.get_version.outputs.version }}"
           body: |
-            ## 📦 调试构建
+            ## 📦 Отладочная сборка
             
-            **版本:** ${{ steps.get_version.outputs.version }}
-            **提交:** ${{ steps.get_version.outputs.commit_hash }}
-            **日期:** ${{ steps.get_version.outputs.commit_date }}
+            **Версия:** ${{ steps.get_version.outputs.version }}
+            **Коммит:** ${{ steps.get_version.outputs.commit_hash }}
+            **Дата:** ${{ steps.get_version.outputs.commit_date }}
             
-            ### 提交信息
+            ### Информация о коммите
             ${{ steps.get_version.outputs.commit_msg }}
             
             ---
-            ⚠️ 这是预发布版本，用于测试和调试。
+            ⚠️ Это предварительная сборка для тестирования и отладки.
           files: ${{ steps.get_version.outputs.artifact_name }}.zip
           prerelease: true
           draft: false
@@ -190,16 +190,16 @@ jobs:
           TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
         run: |
-          MESSAGE="📦 <b>Box 模块自动构建</b>
+          MESSAGE="📦 <b>Автосборка модуля Box</b>
           
-          <b>版本:</b> ${{ steps.get_version.outputs.version }}
-          <b>提交:</b> <code>${{ steps.get_version.outputs.commit_hash }}</code>
-          <b>日期:</b> ${{ steps.get_version.outputs.commit_date }}
-          <b>内容:</b> ${{ steps.commit_info.outputs.commit_msg }}
+          <b>Версия:</b> ${{ steps.get_version.outputs.version }}
+          <b>Коммит:</b> <code>${{ steps.get_version.outputs.commit_hash }}</code>
+          <b>Дата:</b> ${{ steps.get_version.outputs.commit_date }}
+          <b>Содержимое:</b> ${{ steps.commit_info.outputs.commit_msg }}
           
-          <a href='https://github.com/${{ github.repository }}'>仓库地址</a> | <a href='https://github.com/${{ github.repository }}/releases/tag/${{ steps.get_version.outputs.tag_name }}'>Release 详情</a>
+          <a href='https://github.com/${{ github.repository }}'>Репозиторий</a> | <a href='https://github.com/${{ github.repository }}/releases/tag/${{ steps.get_version.outputs.tag_name }}'>Детали релиза</a>
 
-          #模块更新"
+          #module_update"
 
           curl -sS -f -F "chat_id=$TG_CHAT_ID" \
                -F "document=@${{ steps.download_asset.outputs.asset_name }}" \
