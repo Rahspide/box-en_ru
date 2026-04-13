@@ -32,7 +32,7 @@ start_service() {
   fi
   
   if [ "$boot_auto_start" = "false" ]; then
-    echo "开机自启已禁用，跳过启动核心服务。"
+    echo "Boot autostart is disabled, skipping core service startup."
     return 0
   fi
   
