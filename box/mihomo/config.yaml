@@ -1,10 +1,10 @@
-# 此为精简配置，如需更为详细的配置，可参考 https://wiki.metacubex.one/config
-# 如不会配置，也可自行寻找懒人配置，例如(Surfing 模块配置)：https://raw.githubusercontent.com/GitMetaio/Surfing/refs/heads/main/box_bll/clash/config.yaml
+# This is a minimal configuration. For a more detailed setup, see https://wiki.metacubex.one/config
+# If you are unsure how to configure, you can also look for ready-made configs, e.g. (Surfing module config): https://raw.githubusercontent.com/GitMetaio/Surfing/refs/heads/main/box_bll/clash/config.yaml
 
 proxy-providers:
   proxy1:
     type: http
-    url: "填写订阅链接"
+    url: "Enter subscription URL here"
     path: ./proxy_provider/proxy1.yaml
     interval: 86400
     health-check:
@@ -13,10 +13,10 @@ proxy-providers:
       interval: 300
       timeout: 1000
       tolerance: 100
-  # 多订阅按照下面照葫芦画瓢即可
+  # For multiple subscriptions, duplicate the block below
   # proxy2:
   #   type: http
-  #   url: "填写订阅链接"
+  #   url: "Enter subscription URL here"
   #   path: ./proxy_provider/proxy2.yaml
   #   interval: 86400
   #   health-check:
@@ -88,22 +88,22 @@ proxies:
   - {name: DNS_Hijack, type: dns}
 
 proxy-groups:
-  - name: 国外代理
+  - name: Proxy
     type: select
     include-all: true
     exclude-type: "dns"
     icon: https://ghfast.top/raw.githubusercontent.com/Koolson/Qure/refs/heads/master/IconSet/Color/Proxy.png
 
-  - name: 国内直连
+  - name: Direct
     type: select
     proxies: [DIRECT]
     include-all: true
     exclude-type: "dns"
     icon: https://ghfast.top/raw.githubusercontent.com/Koolson/Qure/refs/heads/master/IconSet/Color/China.png
 
-  - name: 漏网之鱼
+  - name: Fallback
     type: select
-    proxies: [国外代理,国内直连]
+    proxies: [Proxy,Direct]
     icon: https://ghfast.top/raw.githubusercontent.com/Koolson/Qure/refs/heads/master/IconSet/Color/Final.png
 
 rule-providers:
@@ -158,6 +158,6 @@ rule-providers:
   
 rules:
   - DST-PORT,53,DNS_Hijack
-  - RULE-SET,proxy_domain,国外代理
-  - OR,((RULE-SET,cn_ip),(RULE-SET,cn_domain),(RULE-SET,private_ip),(RULE-SET,private_domain)),国内直连
-  - MATCH,漏网之鱼
+  - RULE-SET,proxy_domain,Proxy
+  - OR,((RULE-SET,cn_ip),(RULE-SET,cn_domain),(RULE-SET,private_ip),(RULE-SET,private_domain)),Direct
+  - MATCH,Fallback
