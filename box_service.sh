@@ -15,6 +15,6 @@
         done
         inotifyd ${SCRIPTS_DIR}/ctr.inotify /data/misc/net/rt_tables > /dev/null 2>&1 &
     else
-        echo "未找到文件 '/data/adb/box/scripts/start.sh'"
+        echo "Файл '/data/adb/box/scripts/start.sh' не найден"
     fi
 )&
