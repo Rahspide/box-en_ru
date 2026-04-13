@@ -1,51 +1,51 @@
 # Box for Root
 
-`Box for Root` 是一个面向 Android Root 环境（Magisk / KernelSU / APatch）的透明代理工具箱模块。
+`Box for Root` is a transparent proxy toolbox module for Android root environments (Magisk / KernelSU / APatch).
 
-项目深受以下仓库启发并在其基础上持续演进：
+The project draws significant inspiration from the following repositories and continues to evolve based on them:
 - [CHIZI-0618/box4magisk](https://github.com/CHIZI-0618/box4magisk)
 - [taamarin/box_for_magisk](https://github.com/taamarin/box_for_magisk)
 
-## 项目定位
+## Project Overview
 
-本仓库主要提供：
-- 统一的代理核心运行管理（mihomo / sing-box / xray / v2fly / hysteria）
-- 多网络模式下的透明代理规则编排（TProxy / Redirect / Tun / Mixed / Enhance）
-- 订阅、Geo 资源、核心二进制与 WebUI 的统一维护脚本
-- 适配 Android Root 生态的模块化目录与服务生命周期管理
+This repository primarily provides:
+- Unified management of core proxy operations (mihomo / sing-box / xray / v2fly / hysteria)
+- Transparent proxy rule orchestration in multi-network modes (TProxy / Redirect / Tun / Mixed / Enhance)
+- Unified maintenance scripts for subscriptions, Geo resources, core binaries, and the WebUI
+- Modular directory and service lifecycle management tailored for the Android root ecosystem
 
-## 主要目录
+## Main Directory
 
-模块工作目录：`/data/adb/box/`
+Module Working Directory: `/data/adb/box/`
 
 ```text
 /data/adb/box/
-├── bin/                # 代理核心与工具二进制
-├── mihomo/             # mihomo 配置目录
-├── sing-box/           # sing-box 配置目录
-├── xray/               # xray 配置目录
-├── v2fly/              # v2fly 配置目录
-├── hysteria/           # hysteria 配置目录
-├── scripts/            # 核心脚本
-│   ├── box.service     # 服务生命周期管理
-│   ├── box.iptables    # 透明代理规则管理
-│   └── box.tool        # 更新与维护工具集
-├── run/                # 运行时状态与日志
-└── settings.ini        # 全局配置文件
+├── bin/                # Proxy core and tool binaries
+├── mihomo/             # mihomo configuration directory
+├── sing-box/           # sing-box configuration directory
+├── xray/               # xray configuration directory
+├── v2fly/              # v2fly configuration directory
+├── hysteria/           # hysteria configuration directory
+├── scripts/            # Core scripts
+│   ├── box.service     # Service lifecycle management
+│   ├── box.iptables    # Transparent proxy rule management
+│   └── box.tool        # Update and maintenance toolset
+├── run/                # Runtime status and logs
+└── settings.ini        # Global configuration file
 ```
 
-## 核心脚本
+## Core Scripts
 
-- `box.service`: 启停、重启、状态与定时任务控制
-- `box.iptables`: 透明代理规则启用、重建、清理
-- `box.tool`: 订阅更新、Geo 更新、核心更新、配置检查、WebUI 相关维护
+- `box.service`: Control for starting, stopping, restarting, status, and scheduled tasks
+- `box.iptables`: Enable, rebuild, and clean up transparent proxy rules
+- `box.tool`: Subscription updates, Geo updates, core updates, configuration checks, and WebUI-related maintenance
 
-## 文档与社区
+## Documentation and Community
 
 - Wiki: <https://github.com/boxproxy/box/wiki>
-- 更新日志: [CHANGELOG.md](./CHANGELOG.md)
-- 配套 APP / 通知频道: <https://t.me/zero_o0>
+- Changelog: [CHANGELOG.md](./CHANGELOG.md)
+- Companion app / notification channel: <https://t.me/zero_o0>
 
-## 致谢
+## Acknowledgments
 
-感谢开源社区与上述项目作者提供的设计思路与实现参考。
+We would like to thank the open-source community and the authors of the above projects for their design ideas and implementation references.
