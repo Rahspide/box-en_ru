@@ -5,12 +5,12 @@ scripts_dir="${0%/*}"
 user_agent="box_for_root"
 source /data/adb/box/settings.ini
 
-# 使用 settings.ini 中提供的 log()
+# Use the log() provided in settings.ini
 TOOL_LOG="${box_run}/tool.log"
 busybox mkdir -p "$(dirname "$TOOL_LOG")"
 box_log="$TOOL_LOG"
 
-# 设置 GitHub API 访问配置
+# Configure GitHub API access settings
 setup_github_api() {
   rev1="busybox wget --no-check-certificate -qO-"
   if which curl >/dev/null; then
@@ -22,9 +22,9 @@ setup_github_api() {
     else
       rev1="busybox wget --no-check-certificate -qO- --header=\"Authorization: token ${githubtoken}\""
     fi
-    log Debug "GitHub Token 已配置，将使用认证访问 GitHub API"
+    log Debug "GitHub Token configured, will use authenticated access to GitHub API"
   else
-    log Debug "未配置 GitHub Token，将使用匿名访问 GitHub API"
+    log Debug "GitHub Token not configured, will use anonymous access to GitHub API"
   fi
 }
 
@@ -33,22 +33,22 @@ mask_url() {
   echo "$u" | sed -E 's#^([a-zA-Z][a-zA-Z0-9+.-]*://)?([^/]+).*$#\1\2/***#'
 }
 
-# 启动提示
+# Startup notice
 divider() {
   local line="----------------------------------------"
   [ -n "$box_log" ] && echo "$line" >> "$box_log"
 }
 trap divider EXIT
-log Info "执行命令: $0 $@"
+log Info "Executing command: $0 $@"
 
-# 更新文件
+# Update file
 upfile() {
   local file="$1"
   local update_url="$2"
-  local custom_ua="$3" # 接收自定义 User-Agent
+  local custom_ua="$3" # Receive custom User-Agent
   local current_ua
 
-  # 如果提供了自定义 UA, 则使用它; 否则使用全局默认值
+  # If a custom UA is provided, use it; otherwise use the global default
   if [ -n "${custom_ua}" ]; then
     current_ua="${custom_ua}"
   else
@@ -58,7 +58,7 @@ upfile() {
   local file_bak="${file}.bak"
   [ -f "${file}" ] && mv "${file}" "${file_bak}"
 
-  # 使用 ghproxy
+  # Use ghproxy
   if [ "${use_ghproxy}" = "true" ] && [[ "${update_url}" == @(https://github.com/*|https://raw.githubusercontent.com/*|https://gist.github.com/*|https://gist.githubusercontent.com/*) ]]; then
     update_url="${url_ghproxy}/${update_url}"
   fi
@@ -67,89 +67,89 @@ upfile() {
   if [ "${LOG_MASK_URL}" = "mask" ]; then
     log_url="$(mask_url "${update_url}")"
   fi
-  log Info "开始下载: ${log_url}"
-  log Debug "保存到: ${file}"
-  log Debug "使用 User-Agent: ${current_ua}"
+  log Info "Starting download: ${log_url}"
+  log Debug "Saving to: ${file}"
+  log Debug "Using User-Agent: ${current_ua}"
 
   if which curl >/dev/null; then
     http_code=$(curl -L -s --insecure --http1.1 --compressed --user-agent "${current_ua}" -o "${file}" -w "%{http_code}" "${update_url}")
     curl_exit_code=$?
 
     if [ ${curl_exit_code} -ne 0 ]; then
-      log Error "使用 curl 下载失败 (退出码: ${curl_exit_code})"
+      log Error "Download with curl failed (exit code: ${curl_exit_code})"
       [ -f "${file_bak}" ] && mv "${file_bak}" "${file}"
       return 1
     fi
 
     if [ "${http_code}" -ne 200 ]; then
-      log Error "下载失败: 服务器返回 HTTP 状态码 ${http_code}"
+      log Error "Download failed: server returned HTTP status code ${http_code}"
       [ -f "${file_bak}" ] && mv "${file_bak}" "${file}"
       return 1
     fi
   else
     if ! busybox wget --no-check-certificate -q -U "${current_ua}" -O "${file}" "${update_url}"; then
-      log Error "使用 wget 下载失败"
+      log Error "Download with wget failed"
       [ -f "${file_bak}" ] && mv "${file_bak}" "${file}"
       return 1
     fi
   fi
 
   if [ ! -s "${file}" ]; then
-    log Error "下载失败: 文件为空"
+    log Error "Download failed: file is empty"
     [ -f "${file_bak}" ] && mv "${file_bak}" "${file}"
     return 1
   fi
   
-  log Info "下载成功"
+  log Info "Download successful"
   rm -f "${file_bak}" 2>/dev/null
   return 0
 }
 
-# CN IPv4/IPv6 列表更新
+# CN IPv4/IPv6 list update
 upcnip() {
   local did_any=false
   # IPv4
   if [ "${bypass_cn_ip}" = "true" ] && [ "${bypass_cn_ip_v4}" = "true" ]; then
     if [ -z "${cn_ip_url}" ] || [ -z "${cn_ip_file}" ]; then
-      log Warning "cn_ip_url 或 cn_ip_file 未配置，跳过 IPv4"
+      log Warning "cn_ip_url or cn_ip_file not configured, skipping IPv4"
     else
-      log Info "下载 CN IPv4 列表 → ${cn_ip_file}"
+      log Info "Downloading CN IPv4 list → ${cn_ip_file}"
       if upfile "${cn_ip_file}" "${cn_ip_url}"; then
-        log Info "CN IPv4 列表更新完成"
+        log Info "CN IPv4 list update complete"
         did_any=true
       else
-        log Error "CN IPv4 列表更新失败"
+        log Error "CN IPv4 list update failed"
       fi
     fi
   else
-    log Debug "未启用 IPv4 CN 分流（bypass_cn_ip/bypass_cn_ip_v4=false），跳过下载"
+    log Debug "IPv4 CN bypass not enabled (bypass_cn_ip/bypass_cn_ip_v4=false), skipping download"
   fi
 
   # IPv6
   if [ "${bypass_cn_ip}" = "true" ] && [ "${ipv6}" = "true" ] && [ "${bypass_cn_ip_v6}" = "true" ]; then
     if [ -z "${cn_ipv6_url}" ] || [ -z "${cn_ipv6_file}" ]; then
-      log Warning "cn_ipv6_url 或 cn_ipv6_file 未配置，跳过 IPv6"
+      log Warning "cn_ipv6_url or cn_ipv6_file not configured, skipping IPv6"
     else
-      log Info "下载 CN IPv6 列表 → ${cn_ipv6_file}"
+      log Info "Downloading CN IPv6 list → ${cn_ipv6_file}"
       if upfile "${cn_ipv6_file}" "${cn_ipv6_url}"; then
-        log Info "CN IPv6 列表更新完成"
+        log Info "CN IPv6 list update complete"
         did_any=true
       else
-        log Error "CN IPv6 列表更新失败"
+        log Error "CN IPv6 list update failed"
       fi
     fi
   else
-    log Debug "未启用 IPv6 CN 分流或未开启 IPv6，跳过下载"
+    log Debug "IPv6 CN bypass not enabled or IPv6 disabled, skipping download"
   fi
 
   $did_any && return 0 || return 1
 }
 
-# 重启核心进程
+# Restart core process
 restart_box() {
   local core_to_restart=${1:-$bin_name}
   if [ -z "$core_to_restart" ]; then
-    log Error "restart_box: 未指定需要重启的核心"
+    log Error "restart_box: no core specified for restart"
     return 1
   fi
   
@@ -159,19 +159,19 @@ restart_box() {
   pid=$(busybox pidof "$core_to_restart")
 
   if [ -n "$pid" ]; then
-    log Info "$core_to_restart 重启完成 [$(date +"%F %R")]"
+    log Info "$core_to_restart restart complete [$(date +"%F %R")]"
   else
-    log Error "重启 $core_to_restart 失败."
+    log Error "Failed to restart $core_to_restart."
     "${scripts_dir}/box.iptables" disable >/dev/null 2>&1
   fi
 }
 
-# 检查配置
+# Check configuration
 check() {
   case "${bin_name}" in
     sing-box)
       if ${bin_path} check -c "${sing_config}" > "${box_run}/${bin_name}_report.log" 2>&1; then
-        log Info "${sing_config} 检查通过"
+        log Info "${sing_config} check passed"
       else
         log Debug "${sing_config}"
         log Error "$(<"${box_run}/${bin_name}_report.log")" >&2
@@ -179,7 +179,7 @@ check() {
       ;;
     mihomo)
       if ${bin_path} -t -d "${box_dir}/mihomo" -f "${mihomo_config}" > "${box_run}/${bin_name}_report.log" 2>&1; then
-        log Info "${mihomo_config} 检查通过"
+        log Info "${mihomo_config} check passed"
       else
         log Debug "${mihomo_config}"
         log Error "$(<"${box_run}/${bin_name}_report.log")" >&2
@@ -188,7 +188,7 @@ check() {
     xray)
       export XRAY_LOCATION_ASSET="${box_dir}/xray"
       if ${bin_path} -test -confdir "${box_dir}/${bin_name}" > "${box_run}/${bin_name}_report.log" 2>&1; then
-        log Info "配置检查通过"
+        log Info "Configuration check passed"
       else
         log Debug "$(ls ${box_dir}/${bin_name})"
         log Error "$(<"${box_run}/${bin_name}_report.log")" >&2
@@ -197,7 +197,7 @@ check() {
     v2fly)
       export V2RAY_LOCATION_ASSET="${box_dir}/v2fly"
       if ${bin_path} test -d "${box_dir}/${bin_name}" > "${box_run}/${bin_name}_report.log" 2>&1; then
-        log Info "配置检查通过"
+        log Info "Configuration check passed"
       else
         log Debug "$(ls ${box_dir}/${bin_name})"
         log Error "$(<"${box_run}/${bin_name}_report.log")" >&2
@@ -207,13 +207,13 @@ check() {
       true
       ;;
     *)
-      log Error "<${bin_name}> 未知的二进制文件."
+      log Error "<${bin_name}> Unknown binary file."
       exit 1
       ;;
   esac
 }
 
-# 重载基础配置
+# Reload base configuration
 reload() {
   ip_port=$(if [ "${bin_name}" = "mihomo" ]; then busybox awk '/external-controller:/ {print $2}' "${mihomo_config}" | sed "s/'//g"; else busybox awk -F'[:,]' '/"external_controller"/ {print $2":"$3}' "${sing_config}" | sed 's/^[ \t]*//;s/"//g'; fi;)
   secret=$(if [ "${bin_name}" = "mihomo" ]; then busybox awk '/^secret:/ {print $2}' "${mihomo_config}" | sed 's/"//g'; else busybox awk -F'"' '/"secret"/ {print $4}' "${sing_config}" | head -n 1; fi;)
@@ -221,8 +221,8 @@ reload() {
   curl_command="curl"
   if ! command -v curl >/dev/null; then
     if [ ! -e "${bin_dir}/curl" ]; then
-      log Debug "$bin_dir/curl 文件未找到, 无法重载配置"
-      log Debug "开始从 GitHub 下载"
+      log Debug "$bin_dir/curl file not found, cannot reload configuration"
+      log Debug "Starting download from GitHub"
       upcurl || exit 1
     fi
     curl_command="${bin_dir}/curl"
@@ -235,20 +235,20 @@ reload() {
       endpoint="http://${ip_port}/configs?force=true"
 
       if ${curl_command} -X PUT -H "Authorization: Bearer ${secret}" "${endpoint}" -d '{"path": "", "payload": ""}' 2>&1; then
-        log Info "${bin_name} 配置重载成功"
+        log Info "${bin_name} configuration reloaded successfully"
         return 0
       else
-        log Error "${bin_name} 配置重载失败 !"
+        log Error "${bin_name} configuration reload failed!"
         return 1
       fi
       ;;
     "sing-box")
       endpoint="http://${ip_port}/configs?force=true"
       if ${curl_command} -X PUT -H "Authorization: Bearer ${secret}" "${endpoint}" -d '{"path": "", "payload": ""}' 2>&1; then
-        log Info "${bin_name} 配置重载成功."
+        log Info "${bin_name} configuration reloaded successfully."
         return 0
       else
-        log Error "${bin_name} 配置重载失败 !"
+        log Error "${bin_name} configuration reload failed!"
         return 1
       fi
       ;;
@@ -260,13 +260,13 @@ reload() {
       fi
       ;;
     *)
-      log Warning "${bin_name} 不支持使用 API 重载配置."
+      log Warning "${bin_name} does not support configuration reload via API."
       return 1
       ;;
   esac
 }
 
-# 获取最新的 curl
+# Get the latest curl
 upcurl() {
   setup_github_api
   
@@ -276,7 +276,7 @@ upcurl() {
     "armv7l"|"armv8l") arch="armv7" ;;
     "i686") arch="i686" ;;
     "x86_64") arch="amd64" ;;
-    *) log Warning "不支持的架构: $(uname -m)" >&2; return 1 ;;
+    *) log Warning "Unsupported architecture: $(uname -m)" >&2; return 1 ;;
   esac
 
   mkdir -p "${bin_dir}/backup"
@@ -287,9 +287,9 @@ upcurl() {
   local temp_archive="${box_dir}/curl.tar.xz"
   local temp_extract_dir="${box_dir}/curl_temp"
 
-  log Debug "下载 ${download_link}"
+  log Debug "Downloading ${download_link}"
   if ! upfile "${temp_archive}" "${download_link}"; then
-    log Error "下载 curl 失败"
+    log Error "curl download failed"
     return 1
   fi
   
@@ -297,8 +297,8 @@ upcurl() {
   mkdir -p "${temp_extract_dir}"
 
   if ! busybox tar -xJf "${temp_archive}" -C "${temp_extract_dir}" >&2; then
-    log Error "解压 ${temp_archive} 失败" >&2
-    cp "${bin_dir}/backup/curl.bak" "${bin_dir}/curl" >/dev/null 2>&1 && log Info "已恢复 curl"
+    log Error "Failed to extract ${temp_archive}" >&2
+    cp "${bin_dir}/backup/curl.bak" "${bin_dir}/curl" >/dev/null 2>&1 && log Info "curl restored"
     rm -f "${temp_archive}"
     rm -rf "${temp_extract_dir}"
     return 1
@@ -307,9 +307,9 @@ upcurl() {
   local curl_binary=$(find "${temp_extract_dir}" -type f -name "curl")
   if [ -n "${curl_binary}" ]; then
     mv "${curl_binary}" "${bin_dir}/curl"
-    log Info "curl 已成功更新到 ${bin_dir}/curl"
+    log Info "curl successfully updated to ${bin_dir}/curl"
   else
-    log Error "在解压的存档中未找到 curl 二进制文件"
+    log Error "curl binary not found in the extracted archive"
     rm -f "${temp_archive}"
     rm -rf "${temp_extract_dir}"
     return 1
@@ -322,7 +322,7 @@ upcurl() {
   rm -rf "${temp_extract_dir}"
 }
 
-# 获取最新的 yq
+# Get the latest yq
 upyq() {
   local arch platform
   case $(uname -m) in
@@ -330,19 +330,19 @@ upyq() {
     "armv7l"|"armv8l") arch="arm"; platform="android" ;;
     "i686") arch="386"; platform="android" ;;
     "x86_64") arch="amd64"; platform="android" ;;
-    *) log Warning "不支持的架构: $(uname -m)" >&2; return 1 ;;
+    *) log Warning "Unsupported architecture: $(uname -m)" >&2; return 1 ;;
   esac
 
   local download_link="https://github.com/taamarin/yq/releases/download/prerelease/yq_${platform}_${arch}"
 
-  log Debug "下载 ${download_link}"
+  log Debug "Downloading ${download_link}"
   upfile "${box_dir}/bin/yq" "${download_link}"
 
   chown "${box_user_group}" "${box_dir}/bin/yq"
   chmod 0755 "${box_dir}/bin/yq"
 }
 
-# 检查并更新 geoip 和 geosite
+# Check and update geoip and geosite
 upgeox() {
   geodata_mode=$(busybox awk '!/^ *#/ && /geodata-mode:*./{print $2}' "${mihomo_config}")
   [ -z "${geodata_mode}" ] && geodata_mode=false
@@ -366,13 +366,13 @@ upgeox() {
       geosite_url="https://github.com/MetaCubeX/meta-rules-dat/raw/release/geosite.dat"
       ;;
   esac
-  if [ "${update_geo}" = "true" ] && { log Info "每日更新 GeoX" && log Debug "正在下载 ${geoip_url}"; } && upfile "${geoip_file}" "${geoip_url}" && { log Debug "正在下载 ${geosite_url}" && upfile "${geosite_file}" "${geosite_url}"; }; then
+  if [ "${update_geo}" = "true" ] && { log Info "Daily GeoX update" && log Debug "Downloading ${geoip_url}"; } && upfile "${geoip_file}" "${geoip_url}" && { log Debug "Downloading ${geosite_url}" && upfile "${geosite_file}" "${geosite_url}"; }; then
 
     find "${box_dir}/${bin_name}" -maxdepth 1 -type f -name "*.db.bak" -delete
     find "${box_dir}/${bin_name}" -maxdepth 1 -type f -name "*.dat.bak" -delete
     find "${box_dir}/${bin_name}" -maxdepth 1 -type f -name "*.mmdb.bak" -delete
 
-    log Debug "更新 GeoX 于 $(date "+%F %R")"
+    log Debug "GeoX updated at $(date "+%F %R")"
     return 0
   else
    return 1
@@ -388,29 +388,29 @@ upgeox_all() {
   bin_name=$original_bin_name
 }
 
-# 更新 mihomo 配置的 proxy-providers
+# Update mihomo configuration proxy-providers
 update_mihomo_providers() {
   yq="yq"
   if ! command -v yq &>/dev/null; then
     if [ ! -e "${box_dir}/bin/yq" ]; then
-      log Debug "yq 文件未找到, 开始从 GitHub 下载"
+      log Debug "yq file not found, starting download from GitHub"
       ${scripts_dir}/box.tool upyq
     fi
     yq="${box_dir}/bin/yq"
   fi
 
   if [ ! -f "${mihomo_config}" ]; then
-    log Error "配置文件不存在: ${mihomo_config}"
+    log Error "Configuration file does not exist: ${mihomo_config}"
     return 1
   fi
   cp "${mihomo_config}" "${mihomo_config}.bak" 2>/dev/null
   local file_count=${#name_provide_mihomo_config[@]}
   if [ "$file_count" -eq 0 ]; then
-    log Warning "没有配置的订阅文件"
+    log Warning "No subscription files configured"
     return 1
   fi
 
-  log Debug "开始更新 proxy-providers 配置项..."
+  log Debug "Starting update of proxy-providers configuration items..."
   local config_dir="$(dirname "${mihomo_config}")"  
   
   local temp_providers="${mihomo_config}.providers.tmp"
@@ -424,7 +424,7 @@ update_mihomo_providers() {
     local escaped_url
 
     if [ -z "${provider_url}" ]; then
-      log Warning "订阅链接为空，跳过: ${provider_name}"
+      log Warning "Subscription URL is empty, skipping: ${provider_name}"
       continue
     fi
     escaped_url="$(echo "${provider_url}" | busybox sed 's/\\/\\\\/g; s/\"/\\"/g')"
@@ -437,7 +437,7 @@ update_mihomo_providers() {
       relative_path="./$(basename "${mihomo_provide_path}")/${file_name}"
     fi
 
-    log Debug "添加 provider: ${provider_name} -> ${relative_path} (http)"
+    log Debug "Adding provider: ${provider_name} -> ${relative_path} (http)"
     
     cat >> "${temp_providers}" <<EOF
   ${provider_name}:
@@ -497,21 +497,21 @@ EOF
   
   rm -f "${temp_providers}"
   
-  log Debug "proxy-providers 配置构建完成"
+  log Debug "proxy-providers configuration build complete"
   return 0
 }
 
-# 检查并更新订阅
+# Check and update subscriptions
 upsubs() {
   if [ "${update_subscription}" != "true" ]; then
-    log Warning "更新订阅已禁用: update_subscription=\"${update_subscription}\""
+    log Warning "Subscription update disabled: update_subscription=\"${update_subscription}\""
     return 1
   fi
 
   yq="yq"
   if ! command -v yq &>/dev/null; then
     if [ ! -e "${box_dir}/bin/yq" ]; then
-      log Debug "yq 文件未找到, 开始从 GitHub 下载"
+      log Debug "yq file not found, starting download from GitHub"
       ${scripts_dir}/box.tool upyq
     fi
     yq="${box_dir}/bin/yq"
@@ -522,19 +522,19 @@ upsubs() {
       local file_count=${#name_provide_mihomo_config[@]}
 
       if [ "$url_count" -eq 0 ]; then
-        log Warning "${bin_name} 订阅链接为空"
+        log Warning "${bin_name} subscription URL is empty"
         return 1
       fi
 
       if [ "$url_count" -ne "$file_count" ]; then
-        log Error "订阅链接数量 (${url_count}) 与文件名数量 (${file_count}) 不匹配!"
+        log Error "Number of subscription URLs (${url_count}) does not match number of filenames (${file_count})!"
         return 1
       fi
 
-      log Info "${bin_name} 开始更新 ${url_count} 个订阅 → $(date)"
+      log Info "${bin_name} starting update of ${url_count} subscription(s) → $(date)"
       
       if [ -z "${mihomo_provide_path}" ] || ! mkdir -p "${mihomo_provide_path}"; then
-          log Error "mihomo_provide_path 未定义或无法创建目录!"
+          log Error "mihomo_provide_path is undefined or directory cannot be created!"
           return 1
       fi
 
@@ -547,141 +547,141 @@ upsubs() {
         local file_name="${name_provide_mihomo_config[$i]}"
         local provider_file="${mihomo_provide_path}/${file_name}"
         
-        log Info "--> 正在处理订阅 #${i}: ${file_name}"
+        log Info "--> Processing subscription #${i}: ${file_name}"
 
         if [ "${renew}" = "true" ] && [ "$i" -eq 0 ]; then
-          log Info "检测到 renew=true, 仅使用第一个订阅链接更新"
+          log Info "Detected renew=true, updating using only the first subscription URL"
           if LOG_MASK_URL=mask upfile "${mihomo_config}" "${url}" "ClashMeta"; then
-            log Info "${mihomo_config} 更新成功"
+            log Info "${mihomo_config} updated successfully"
             if [ -f "${box_pid}" ]; then
               kill -0 "$(<"${box_pid}" 2>/dev/null)" && \
               $scripts_dir/box.service restart 2>/dev/null
             fi
-            log Info "${bin_name} 订阅更新完成 → $(date)"
+            log Info "${bin_name} subscription update complete → $(date)"
             exit 0
           else
-            log Error "${mihomo_config} 更新失败"
+            log Error "${mihomo_config} update failed"
             exit 1
           fi
         fi
         
         if LOG_MASK_URL=mask upfile "${provider_file}" "${url}" "ClashMeta"; then
-          log Debug "文件大小: $(wc -c < "${provider_file}" 2>/dev/null || echo "未知") 字节"
-          log Debug "文件路径: ${provider_file}"
+          log Debug "File size: $(wc -c < "${provider_file}" 2>/dev/null || echo "unknown") bytes"
+          log Debug "File path: ${provider_file}"
           
           local decoded_content
           decoded_content=$(base64 -d "${provider_file}" 2>/dev/null)
 
           if [ $? -eq 0 ] && echo "${decoded_content}" | grep -qE "vless://|vmess://|ss://|hysteria://|hysteria2://|anytls://|trojan://"; then
-            log Info "检测到 Base64 编码订阅, 正在解码..."
+            log Info "Detected Base64 encoded subscription, decoding..."
             echo "${decoded_content}" > "${provider_file}"
             local proxy_count=$(echo "${decoded_content}" | grep -cE "vless://|vmess://|ss://|hysteria://|hysteria2://|anytls://|trojan://")
-            log Debug "提取到 ${proxy_count} 个代理节点"
-            log Info "订阅 #${i} (Base64解码/原始链接) 已保存"
+            log Debug "Extracted ${proxy_count} proxy node(s)"
+            log Info "Subscription #${i} (Base64 decoded/raw URL) saved"
             success_count=$((success_count + 1))
           elif ${yq} 'has("proxies")' "${provider_file}" 2>/dev/null; then
             if [ "${custom_rules_subs}" = "true" ] && [ "$rules_extracted" = "false" ]; then
               if ${yq} 'has("rules")' "${provider_file}" &>/dev/null; then
-                log Info "在 ${file_name} 中找到规则, 正在提取..."
+                log Info "Rules found in ${file_name}, extracting..."
                 ${yq} '.rules' "${provider_file}" > "${mihomo_provide_rules}"
                 ${yq} -i '{"rules": .}' "${mihomo_provide_rules}"
-                log Info "规则已提取到 ${mihomo_provide_rules}"
+                log Info "Rules extracted to ${mihomo_provide_rules}"
                 rules_extracted=true
               fi
             fi
 
-            log Debug "标准订阅格式, 正在提取 proxies 并覆盖原文件..."
+            log Debug "Standard subscription format, extracting proxies and overwriting original file..."
             local temp_proxies_file
             temp_proxies_file=$(mktemp)
             
-            # 提取 proxies 数组并验证
-            log Debug "尝试提取 proxies 字段..."     
+            # Extract and validate proxies array
+            log Debug "Attempting to extract proxies field..."     
             if ${yq} '.proxies' "${provider_file}" > "${temp_proxies_file}" 2>/dev/null; then
               if [ -s "${temp_proxies_file}" ]; then
                 local proxy_count=$(${yq} 'length' "${temp_proxies_file}" 2>/dev/null || echo "0")
-                log Debug "提取到 ${proxy_count} 个代理节点"
+                log Debug "Extracted ${proxy_count} proxy node(s)"
                 ${yq} -i '{"proxies": .}' "${temp_proxies_file}"
                 mv "${temp_proxies_file}" "${provider_file}"
-                log Info "订阅 #${i} (标准格式) 已处理并保存"
+                log Info "Subscription #${i} (standard format) processed and saved"
                 success_count=$((success_count + 1))
               else
-                log Error "订阅 #${i} (${file_name}) proxies 字段为空"
+                log Error "Subscription #${i} (${file_name}) proxies field is empty"
                 rm -f "${temp_proxies_file}" "${provider_file}"
                 update_failed=true
               fi
             else
-              log Error "订阅 #${i} (${file_name}) yq 提取 proxies 失败"
+              log Error "Subscription #${i} (${file_name}) yq extraction of proxies failed"
               rm -f "${temp_proxies_file}" "${provider_file}"
               update_failed=true
             fi
 
           elif ${yq} '.. | select(tag == "!!str")' "${provider_file}" 2>/dev/null | grep -qE "vless://|vmess://|ss://|hysteria://|hysteria2://|anytls://|trojan://"; then
             local proxy_count=$(${yq} '.. | select(tag == "!!str")' "${provider_file}" 2>/dev/null | grep -cE "vless://|vmess://|ss://|hysteria://|hysteria2://|anytls://|trojan://")
-            log Debug "提取到 ${proxy_count} 个代理节点"
-            log Info "订阅 #${i} (原始链接) 已保存"
+            log Debug "Extracted ${proxy_count} proxy node(s)"
+            log Info "Subscription #${i} (raw URL) saved"
             success_count=$((success_count + 1))
           else
-            log Error "订阅 #${i} (${file_name}) 格式无法识别或内容为空, 已删除"
+            log Error "Subscription #${i} (${file_name}) format unrecognized or content is empty, deleted"
             rm -f "${provider_file}"
             update_failed=true
           fi
         else
-          log Error "订阅 #${i} (${file_name}) 下载失败"
+          log Error "Subscription #${i} (${file_name}) download failed"
           update_failed=true
         fi
       done
 
-      log Info "成功更新 ${success_count} / ${url_count} 个订阅"
+      log Info "Successfully updated ${success_count} / ${url_count} subscription(s)"
       
       if [ "${renew}" != "true" ] && [ "${success_count}" -gt 0 ]; then
         if [ "${auto_modify_config}" = "true" ]; then
-          log Info "正在更新 ${name_mihomo_config} 的 proxy-providers 配置..."
+          log Info "Updating proxy-providers configuration for ${name_mihomo_config}..."
           if update_mihomo_providers; then
-            log Info "proxy-providers 配置更新成功"
+            log Info "proxy-providers configuration updated successfully"
           else
-            log Warning "proxy-providers 配置更新失败，请手动检查配置文件"
+            log Warning "proxy-providers configuration update failed, please check the configuration file manually"
           fi
         else
-          log Info "auto_modify_config 未启用，跳过更新 proxy-providers 配置"
+          log Info "auto_modify_config not enabled, skipping proxy-providers configuration update"
         fi
       fi
       
       if [ "${update_failed}" = "true" ]; then
-        log Error "部分订阅链接更新失败"
+        log Error "Some subscription URLs failed to update"
         return 1
       else
-        log Info "更新订阅于 $(date +"%F %R")"
+        log Info "Subscription updated at $(date +"%F %R")"
         return 0
       fi
       ;;
     "sing-box")
       update_file_name="${sing_config}"
       if [ -n "${subscription_url_singbox}" ]; then
-        log Info "${bin_name} 每日更新订阅 → $(date)"
-        log Debug "正在下载 ${update_file_name}"
+        log Info "${bin_name} daily subscription update → $(date)"
+        log Debug "Downloading ${update_file_name}"
         if upfile "${update_file_name}" "${subscription_url_singbox}" "sing-box"; then
-          log Info "${update_file_name} 已保存"
-          log Info "更新订阅于 $(date +"%F %R")"
+          log Info "${update_file_name} saved"
+          log Info "Subscription updated at $(date +"%F %R")"
           if [ -f "${box_pid}" ]; then
             kill -0 "$(<"${box_pid}" 2>/dev/null)" && \
             $scripts_dir/box.service restart 2>/dev/null
           fi
           return 0
         else
-          log Error "更新订阅失败"
+          log Error "Subscription update failed"
           return 1
         fi
       else
-        log Warning "${bin_name} 订阅链接为空..."
+        log Warning "${bin_name} subscription URL is empty..."
         return 1
       fi
       ;;
     "xray"|"v2fly"|"hysteria")
-      log Warning "${bin_name} 不支持订阅功能.."
+      log Warning "${bin_name} does not support subscription feature.."
       return 1
       ;;
     *)
-      log Error "<${bin_name}> 未知的二进制文件."
+      log Error "<${bin_name}> Unknown binary file."
       return 1
       ;;
   esac
@@ -692,7 +692,7 @@ upkernel() {
   
   local core_to_update="$1"
   if [ -z "$core_to_update" ]; then
-    log Error "upkernel: 未提供核心名称"
+    log Error "upkernel: core name not provided"
     return 1
   fi
 
@@ -712,17 +712,17 @@ upkernel() {
     "armv7l"|"armv8l") arch="armv7"; platform="linux" ;;
     "i686") arch="386"; platform="linux" ;;
     "x86_64") arch="amd64"; platform="linux" ;;
-    *) log Warning "不支持的架构: $(uname -m)" >&2; return 1 ;;
+    *) log Warning "Unsupported architecture: $(uname -m)" >&2; return 1 ;;
   esac
   
   local file_kernel="${core_to_update}-${arch}"
   case "${core_to_update}" in
     "mihomo_smart")
-      log Info "正在更新 mihomo-smart 核心 (来自 vernesong/mihomo)"
+      log Info "Updating mihomo-smart core (from vernesong/mihomo)"
       local arch_smart
       case $(uname -m) in
         "aarch64") arch_smart="arm64-v8" ;;
-        *) log Error "mihomo-smart 当前仅支持 aarch64 架构"; return 1 ;;
+        *) log Error "mihomo-smart currently only supports aarch64 architecture"; return 1 ;;
       esac
 
       local release_page_url="https://github.com/vernesong/mihomo/releases/expanded_assets/Prerelease-Alpha"
@@ -731,14 +731,14 @@ upkernel() {
       local smart_version_tag=$($rev1 "${release_page_url}" | busybox grep -oE "smart-[a-f0-9]+" | head -1)
 
       if [ -z "$smart_version_tag" ]; then
-        log Error "获取 mihomo-smart 最新版本标签失败"
+        log Error "Failed to get latest version tag for mihomo-smart"
         return 1
       fi
 
       local download_link="https://github.com/vernesong/mihomo/releases/download/Prerelease-Alpha/mihomo-android-${arch_smart}-alpha-${smart_version_tag}.gz"
       local file_kernel="${core_to_update}-${arch_smart}"
       
-      log Debug "下载 ${download_link}"
+      log Debug "Downloading ${download_link}"
       upfile "${box_dir}/${file_kernel}.gz" "${download_link}" && xkernel "$core_to_update" "" "" "" "$file_kernel"
       ;;
     "sing-box")
@@ -746,20 +746,20 @@ upkernel() {
       url_down="https://github.com/SagerNet/sing-box/releases"
 
       if [ "${singbox_stable}" = "disable" ]; then
-        log Debug "下载 ${core_to_update} 预发行版"
+        log Debug "Downloading ${core_to_update} pre-release"
         latest_version=$($rev1 "${api_url}" | grep "tag_name" | busybox grep -oE "v[0-9].*" | head -1 | cut -d'"' -f1)
       else
-        log Debug "下载 ${core_to_update} 最新稳定版"
+        log Debug "Downloading ${core_to_update} latest stable version"
         latest_version=$($rev1 "${api_url}/latest" | grep "tag_name" | busybox grep -oE "v[0-9.]*" | head -1)
       fi
 
       if [ -z "$latest_version" ]; then
-        log Error "获取 sing-box 最新 稳定版/测试版/Alpha版 失败"
+        log Error "Failed to get sing-box latest stable/beta/alpha version"
         return 1
       fi
 
       download_link="${url_down}/download/${latest_version}/sing-box-${latest_version#v}-${platform}-${arch}.tar.gz"
-      log Debug "下载 ${download_link}"
+      log Debug "Downloading ${download_link}"
       upfile "${box_dir}/${file_kernel}.tar.gz" "${download_link}" && xkernel "$core_to_update" "$platform" "$arch" "$latest_version" "$file_kernel"
       ;;
     "mihomo")
@@ -777,7 +777,7 @@ upkernel() {
       fi
 
       if [ -z "$latest_version" ]; then
-        log Error "获取 mihomo 最新 稳定版/预发行版 失败"
+        log Error "Failed to get mihomo latest stable/pre-release version"
         return 1
       fi
 
@@ -787,7 +787,7 @@ upkernel() {
       fi
 
       filename="mihomo-${platform}-${arch}-${latest_version}"
-      log Debug "下载 ${download_link}/download/${tag}/${filename}.gz"
+      log Debug "Downloading ${download_link}/download/${tag}/${filename}.gz"
       upfile "${box_dir}/${file_kernel}.gz" "${download_link}/download/${tag}/${filename}.gz" && xkernel "$core_to_update" "" "" "" "$file_kernel"
       ;;
     "xray"|"v2fly")
@@ -796,7 +796,7 @@ upkernel() {
       latest_version=$($rev1 ${api_url} | grep "tag_name" | busybox grep -oE "v[0-9.]*" | head -1)
 
       if [ -z "$latest_version" ]; then
-        log Error "获取 ${core_to_update} 最新版本号失败"
+        log Error "Failed to get latest version number for ${core_to_update}"
         return 1
       fi
 
@@ -805,10 +805,10 @@ upkernel() {
         "x86_64") download_file="$bin-linux-64.zip" ;;
         "armv7l"|"armv8l") download_file="$bin-linux-arm32-v7a.zip" ;;
         "aarch64") download_file="$bin-android-arm64-v8a.zip" ;;
-        *) log Error "不支持的架构: $(uname -m)" >&2; return 1 ;;
+        *) log Error "Unsupported architecture: $(uname -m)" >&2; return 1 ;;
       esac
       download_link="https://github.com/$(if [ "${core_to_update}" = "xray" ]; then echo "XTLS/Xray-core/releases"; else echo "v2fly/v2ray-core/releases"; fi)"
-      log Debug "正在下载 ${download_link}/download/${latest_version}/${download_file}"
+      log Debug "Downloading ${download_link}/download/${latest_version}/${download_file}"
       upfile "${box_dir}/${file_kernel}.zip" "${download_link}/download/${latest_version}/${download_file}" && xkernel "$core_to_update" "" "" "" "$file_kernel"
       ;;
     "hysteria")
@@ -819,7 +819,7 @@ upkernel() {
         "i686") arch="386" ;;
         "x86_64") arch="amd64" ;;
         *)
-          log Warning "不支持的架构: $(uname -m)"
+          log Warning "Unsupported architecture: $(uname -m)"
           return 1
           ;;
       esac
@@ -830,17 +830,17 @@ upkernel() {
       local latest_version=$($rev1 "https://api.github.com/repos/apernet/hysteria/releases" | grep "tag_name" | grep -oE "[0-9.].*" | head -1 | sed 's/,//g' | cut -d '"' -f 1)
 
       if [ -z "$latest_version" ]; then
-        log Error "获取 hysteria 最新版本号失败"
+        log Error "Failed to get latest version number for hysteria"
         return 1
       fi
 
       local download_link="https://github.com/apernet/hysteria/releases/download/app%2Fv${latest_version}/hysteria-android-${arch}"
 
-      log Debug "正在下载 ${download_link}"
+      log Debug "Downloading ${download_link}"
       upfile "${bin_dir}/hysteria" "${download_link}" && xkernel "$core_to_update"
       ;;
     *)
-      log Error "<${core_to_update}> 未知的二进制文件."
+      log Error "<${core_to_update}> Unknown binary file."
       return 1
       ;;
   esac
@@ -875,9 +875,9 @@ xkernel() {
       fi
 
       if ${gunzip_command} -f "${box_dir}/${file_kernel}.gz" >&2 && mv "${box_dir}/${file_kernel}" "${bin_dir}/${target_bin_name}"; then
-        log Info "${target_bin_name} 已成功更新 (来自: ${core_to_process})"
+        log Info "${target_bin_name} successfully updated (from: ${core_to_process})"
       else
-        log Error "解压或移动 ${target_bin_name} 核心失败."
+        log Error "Failed to extract or move ${target_bin_name} core."
         bin_name=$original_bin_name
         return 1
       fi
@@ -887,17 +887,17 @@ xkernel() {
       if ! command -v tar >/dev/null; then
         tar_command="busybox tar"
       fi
-      log Info "正在解压 Sing-Box 核心..."
+      log Info "Extracting Sing-Box core..."
       if ${tar_command} -xf "${box_dir}/${file_kernel}.tar.gz" -C "${bin_dir}" >/dev/null; then
         mv "${bin_dir}/sing-box-${latest_version#v}-${platform}-${arch}/sing-box" "${bin_dir}/${core_to_process}"
         if [ -f "${box_pid}" ]; then
           rm -rf /data/adb/box/sing-box/cache.db
           restart_box "$core_to_process"
         else
-          log Debug "${core_to_process} 无需重启."
+          log Debug "${core_to_process} does not need to restart."
         fi
       else
-        log Error "解压 ${box_dir}/${file_kernel}.tar.gz 失败."
+        log Error "Failed to extract ${box_dir}/${file_kernel}.tar.gz."
       fi
       [ -d "${bin_dir}/sing-box-${latest_version#v}-${platform}-${arch}" ] && \
         rm -r "${bin_dir}/sing-box-${latest_version#v}-${platform}-${arch}"
@@ -913,17 +913,17 @@ xkernel() {
       fi
 
       mkdir -p "${bin_dir}/update"
-      log Info "正在解压 ${bin} 核心..."
+      log Info "Extracting ${bin} core..."
       if ${unzip_command} -oq "${box_dir}/${file_kernel}.zip" "${bin}" -d "${bin_dir}/update"; then
         if mv "${bin_dir}/update/${bin}" "${bin_dir}/${core_to_process}"; then
-          true # 成功
+          true # Success
         else
-          log Error "移动核心失败."
+          log Error "Failed to move core."
           rm -rf "${bin_dir}/update"
           return 1
         fi
       else
-        log Error "解压 ${box_dir}/${file_kernel}.zip 失败."
+        log Error "Failed to extract ${box_dir}/${file_kernel}.zip."
         rm -rf "${bin_dir}/update"
         return 1
       fi
@@ -933,7 +933,7 @@ xkernel() {
       true
       ;;
     *)
-      log Error "<${core_to_process}> 未知的二进制文件."
+      log Error "<${core_to_process}> Unknown binary file."
       bin_name=$original_bin_name
       return 1
       ;;
@@ -946,13 +946,13 @@ xkernel() {
   
   if [ -f "${box_pid}" ]; then
     if [ "$original_bin_name" = "$target_bin_name" ]; then
-      log Info "检测到正在运行的核心已被更新，将自动重启服务..."
+      log Info "Detected that the running core has been updated, automatically restarting service..."
       restart_box "$target_bin_name"
     else
-      log Info "${target_bin_name} 已更新，但当前运行的是 ${original_bin_name}，无需重启。"
+      log Info "${target_bin_name} has been updated, but the currently running core is ${original_bin_name}, no restart needed."
     fi
   else
-    log Info "服务未在运行，无需重启。"
+    log Info "Service is not running, no restart needed."
   fi
   
   bin_name=$original_bin_name
@@ -971,9 +971,9 @@ upxui() {
     
     if [ -z "${ui_path}" ]; then
       ui_path="./dashboard"
-      log Warning "配置文件中未找到 external-ui/external_ui 字段，使用默认路径: ${ui_path}"
+      log Warning "external-ui/external_ui field not found in configuration file, using default path: ${ui_path}"
     fi
-    log Debug "配置文件中的 UI 路径: ${ui_path}"
+    log Debug "UI path from configuration file: ${ui_path}"
     
     local dashboard_dir
     if [[ "${ui_path}" == ./* ]]; then
@@ -983,7 +983,7 @@ upxui() {
     else
       dashboard_dir="${box_dir}/${bin_name}/${ui_path}"
     fi
-    log Info "Dashboard 目标目录: ${dashboard_dir}"
+    log Info "Dashboard target directory: ${dashboard_dir}"
     
     file_dashboard="${box_dir}/${bin_name}_dashboard.zip"
     if [ -n "${ui_url}" ]; then
@@ -994,10 +994,10 @@ upxui() {
     
     if upfile "${file_dashboard}" "${url}"; then
       if [ ! -d "${dashboard_dir}" ]; then
-        log Info "面板文件夹不存在, 正在创建: ${dashboard_dir}"
+        log Info "Dashboard folder does not exist, creating: ${dashboard_dir}"
         mkdir -p "${dashboard_dir}"
       else
-        log Debug "清理现有面板文件: ${dashboard_dir}"
+        log Debug "Cleaning existing dashboard files: ${dashboard_dir}"
         rm -rf "${dashboard_dir}/"*
       fi
       
@@ -1007,7 +1007,7 @@ upxui() {
         unzip_command="busybox unzip"
       fi
       
-      log Info "正在解压 Dashboard..."
+      log Info "Extracting Dashboard..."
       local temp_extract_dir="${box_dir}/${bin_name}_dashboard_temp"
       rm -rf "${temp_extract_dir}"
       mkdir -p "${temp_extract_dir}"
@@ -1029,28 +1029,28 @@ upxui() {
           fi
         fi
       else
-        log Error "解压 Dashboard 失败"
+        log Error "Failed to extract Dashboard"
         rm -f "${file_dashboard}"
         rm -rf "${temp_extract_dir}"
         return 1
       fi
 
       if [ -z "$(find "${dashboard_dir}" -mindepth 1 -maxdepth 1 | head -n 1)" ]; then
-        log Error "Dashboard 目录为空，更新失败"
+        log Error "Dashboard directory is empty, update failed"
         rm -f "${file_dashboard}"
         rm -rf "${temp_extract_dir}"
         return 1
       fi
       rm -f "${file_dashboard}"
       rm -rf "${temp_extract_dir}"
-      log Info "Dashboard 更新成功 → ${dashboard_dir}"
+      log Info "Dashboard updated successfully → ${dashboard_dir}"
     else
-      log Error "下载 Dashboard 失败"
+      log Error "Failed to download Dashboard"
       return 1
     fi
     return 0
   else
-    log Debug "${bin_name} 不支持面板"
+    log Debug "${bin_name} does not support dashboard"
     return 1
   fi
 }
@@ -1060,20 +1060,20 @@ cgroup_blkio() {
   local fallback_weight="${2:-900}"
 
   if [ -z "$pid_file" ] || [ ! -f "$pid_file" ]; then
-    log Warning "PID 文件丢失或无效: $pid_file"
+    log Warning "PID file missing or invalid: $pid_file"
     return 1
   fi
 
   local PID=$(<"$pid_file" 2>/dev/null)
   if [ -z "$PID" ] || ! kill -0 "$PID" >/dev/null 2>&1; then
-    log Warning "来自 ${pid_file} 的 PID $PID 无效或未运行"
+    log Warning "PID $PID from ${pid_file} is invalid or not running"
     return 1
   fi
 
   if [ -z "$blkio_path" ]; then
     blkio_path=$(mount | grep cgroup | busybox awk '/blkio/{print $3}' | head -1)
     if [ -z "$blkio_path" ] || [ ! -d "$blkio_path" ]; then
-      log Warning "blkio cgroup 路径未找到"
+      log Warning "blkio cgroup path not found"
       return 1
     fi
   fi
@@ -1083,34 +1083,34 @@ cgroup_blkio() {
   if [ ! -d "$target" ]; then
     mkdir -p "$target" 2>/dev/null
     if [ ! -d "$target" ]; then
-      log Warning "无法创建 box blkio 目录: $target"
+      log Warning "Unable to create box blkio directory: $target"
       if [ -d "${blkio_path}/foreground" ]; then
         target="${blkio_path}/foreground"
-        log Info "回退使用现有 blkio 目录: foreground"
+        log Info "Falling back to existing blkio directory: foreground"
       elif [ -d "${blkio_path}/top-app" ]; then
         target="${blkio_path}/top-app"
-        log Info "回退使用现有 blkio 目录: top-app"
+        log Info "Falling back to existing blkio directory: top-app"
       else
-        log Warning "blkio 目标未找到，无法设置 IO 权重"
+        log Warning "blkio target not found, unable to set IO weight"
         return 1
       fi
     else
-      log Info "成功创建专用 box blkio 目录: $target"
+      log Info "Successfully created dedicated box blkio directory: $target"
       echo "$fallback_weight" > "${target}/blkio.weight" 2>/dev/null
       if [ $? -ne 0 ]; then
-        log Warning "无法设置 blkio 权重到 ${target}/blkio.weight"
+        log Warning "Unable to set blkio weight to ${target}/blkio.weight"
       else
-        log Info "已设置 blkio 权重: $fallback_weight"
+        log Info "blkio weight set: $fallback_weight"
       fi
     fi
   fi
 
   echo "$PID" > "${target}/cgroup.procs" 2>/dev/null
   if [ $? -eq 0 ]; then
-    log Info "已分配 PID $PID 到 ${target}，IO 权重 [$fallback_weight]"
+    log Info "PID $PID assigned to ${target}, IO weight [$fallback_weight]"
     return 0
   else
-    log Warning "无法将 PID $PID 分配到 ${target}"
+    log Warning "Unable to assign PID $PID to ${target}"
     return 1
   fi
 }
@@ -1120,12 +1120,12 @@ cgroup_memcg() {
   local raw_limit="$2"
 
   if [ -z "$pid_file" ] || [ ! -f "$pid_file" ]; then
-    log Warning "PID 文件丢失或无效: $pid_file"
+    log Warning "PID file missing or invalid: $pid_file"
     return 1
   fi
 
   if [ -z "$raw_limit" ]; then
-    log Warning "未指定 memcg 限制"
+    log Warning "memcg limit not specified"
     return 1
   fi
 
@@ -1144,7 +1144,7 @@ cgroup_memcg() {
       limit=$raw_limit
       ;;
     *)
-      log Warning "无效的 memcg 限制格式: $raw_limit"
+      log Warning "Invalid memcg limit format: $raw_limit"
       return 1
       ;;
   esac
@@ -1152,14 +1152,14 @@ cgroup_memcg() {
   local PID
   PID=$(<"$pid_file" 2>/dev/null)
   if [ -z "$PID" ] || ! kill -0 "$PID" >/dev/null 2>&1; then
-    log Warning "来自 ${pid_file} 的 PID $PID 无效或未运行"
+    log Warning "PID $PID from ${pid_file} is invalid or not running"
     return 1
   fi
 
   if [ -z "$memcg_path" ]; then
     memcg_path=$(mount | grep cgroup | busybox awk '/memory/{print $3}' | head -1)
     if [ -z "$memcg_path" ] || [ ! -d "$memcg_path" ]; then
-      log Warning "memory cgroup 路径未找到"
+      log Warning "memory cgroup path not found"
       return 1
     fi
   fi
@@ -1169,17 +1169,17 @@ cgroup_memcg() {
   if [ ! -d "$target" ]; then
     mkdir -p "$target" 2>/dev/null
     if [ ! -d "$target" ]; then
-      log Warning "无法创建 box memory 目录: $target"
+      log Warning "Unable to create box memory directory: $target"
       local name="${bin_name:-app}"
       target="${memcg_path}/${name}"
       mkdir -p "$target" 2>/dev/null
       if [ ! -d "$target" ]; then
-        log Warning "无法创建 memory 目录: $target"
+        log Warning "Unable to create memory directory: $target"
         return 1
       fi
-      log Info "回退使用 memory 目录: $target"
+      log Info "Falling back to memory directory: $target"
     else
-      log Info "成功创建专用 box memory 目录: $target"
+      log Info "Successfully created dedicated box memory directory: $target"
     fi
   fi
 
@@ -1194,17 +1194,17 @@ cgroup_memcg() {
 
   echo "$limit" > "${target}/memory.limit_in_bytes" 2>/dev/null
   if [ $? -ne 0 ]; then
-    log Warning "无法设置内存限制到 ${target}/memory.limit_in_bytes"
+    log Warning "Unable to set memory limit to ${target}/memory.limit_in_bytes"
     return 1
   fi
-  log Info "已设置内存限制: ${hr_limit} (${limit} 字节)"
+  log Info "Memory limit set: ${hr_limit} (${limit} bytes)"
 
   echo "$PID" > "${target}/cgroup.procs" 2>/dev/null
   if [ $? -eq 0 ]; then
-    log Info "已分配 PID $PID 到 ${target}，内存限制 [$hr_limit]"
+    log Info "PID $PID assigned to ${target}, memory limit [$hr_limit]"
     return 0
   else
-    log Warning "无法将 PID $PID 分配到 ${target}"
+    log Warning "Unable to assign PID $PID to ${target}"
     return 1
   fi
 }
@@ -1214,14 +1214,14 @@ cgroup_cpuset() {
   local cores="${2}"
 
   if [ -z "${pid_file}" ] || [ ! -f "${pid_file}" ]; then
-    log Warning "PID 文件丢失或无效: ${pid_file}"
+    log Warning "PID file missing or invalid: ${pid_file}"
     return 1
   fi
 
   local PID
   PID=$(<"${pid_file}" 2>/dev/null)
   if [ -z "$PID" ] || ! kill -0 "$PID" >/dev/null; then
-    log Warning "来自 ${pid_file} 的 PID $PID 无效或未运行"
+    log Warning "PID $PID from ${pid_file} is invalid or not running"
     return 1
   fi
 
@@ -1229,7 +1229,7 @@ cgroup_cpuset() {
     local total_core
     total_core=$(nproc --all 2>/dev/null)
     if [ -z "$total_core" ] || [ "$total_core" -le 0 ]; then
-      log Warning "检测 CPU 核心失败"
+      log Warning "Failed to detect CPU cores"
       return 1
     fi
     cores="0-$((total_core - 1))"
@@ -1238,7 +1238,7 @@ cgroup_cpuset() {
   if [ -z "${cpuset_path}" ]; then
     cpuset_path=$(mount | grep cgroup | busybox awk '/cpuset/{print $3}' | head -1)
     if [ -z "${cpuset_path}" ] || [ ! -d "${cpuset_path}" ]; then
-      log Warning "cpuset_path 未找到"
+      log Warning "cpuset_path not found"
       return 1
     fi
   fi
@@ -1248,7 +1248,7 @@ cgroup_cpuset() {
   if [ ! -d "${cpuset_target}" ]; then
     mkdir -p "${cpuset_target}" 2>/dev/null
     if [ ! -d "${cpuset_target}" ]; then
-      log Warning "无法创建 box cpuset 目录: ${cpuset_target}"
+      log Warning "Unable to create box cpuset directory: ${cpuset_target}"
       cpuset_target="${cpuset_path}/foreground"
       if [ ! -d "${cpuset_target}" ]; then
         cpuset_target="${cpuset_path}/top-app"
@@ -1256,13 +1256,13 @@ cgroup_cpuset() {
       if [ ! -d "${cpuset_target}" ]; then
         cpuset_target="${cpuset_path}/apps"
         if [ ! -d "${cpuset_target}" ]; then
-          log Warning "cpuset 目标未找到，无法设置 CPU 核心"
+          log Warning "cpuset target not found, unable to set CPU cores"
           return 1
         fi
       fi
-      log Info "回退使用现有 cpuset 目录: ${cpuset_target}"
+      log Info "Falling back to existing cpuset directory: ${cpuset_target}"
     else
-      log Info "成功创建专用 box cpuset 目录: ${cpuset_target}"
+      log Info "Successfully created dedicated box cpuset directory: ${cpuset_target}"
       if [ -f "${cpuset_path}/cpus" ]; then
         cat "${cpuset_path}/cpus" > "${cpuset_target}/cpus" 2>/dev/null
       fi
@@ -1274,22 +1274,22 @@ cgroup_cpuset() {
 
   echo "${cores}" > "${cpuset_target}/cpus" 2>/dev/null
   if [ $? -ne 0 ]; then
-    log Warning "无法设置 CPU 核心到 ${cpuset_target}/cpus"
+    log Warning "Unable to set CPU cores to ${cpuset_target}/cpus"
     return 1
   fi
   
   echo "0" > "${cpuset_target}/mems" 2>/dev/null
   if [ $? -ne 0 ]; then
-    log Warning "无法设置内存节点到 ${cpuset_target}/mems"
+    log Warning "Unable to set memory nodes to ${cpuset_target}/mems"
     return 1
   fi
 
   echo "${PID}" > "${cpuset_target}/cgroup.procs" 2>/dev/null
   if [ $? -eq 0 ]; then
-    log Info "已分配 PID $PID 到 ${cpuset_target}，CPU 核心 [$cores]"
+    log Info "PID $PID assigned to ${cpuset_target}, CPU cores [$cores]"
     return 0
   else
-    log Warning "无法将 PID $PID 分配到 ${cpuset_target}"
+    log Warning "Unable to assign PID $PID to ${cpuset_target}"
     return 1
   fi
 }
@@ -1315,7 +1315,7 @@ webroot() {
   <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>不支持WebUI</title>
+      <title>WebUI not supported</title>
       <style>
           body {
               font-family: Arial, sans-serif;
@@ -1328,23 +1328,23 @@ webroot() {
       </style>
   </head>
   <body>
-      <h1>不支持WebUI</h1>
-      <p>抱歉，xray/v2ray 不支持所需的WebUI功能。</p>
+      <h1>WebUI not supported</h1>
+      <p>Sorry, xray/v2ray does not support the required WebUI functionality.</p>
   </body>
   </html>' > $path_webroot
   fi
-  log Info "已生成/更新 WebUI 页面: ${path_webroot} → http://${ip_port}/ui/ (内核: ${bin_name})"
+  log Info "WebUI page generated/updated: ${path_webroot} → http://${ip_port}/ui/ (core: ${bin_name})"
 }
 
 bond0() {
   sysctl -w net.ipv4.tcp_low_latency=0 >/dev/null 2>&1
-  log Debug "tcp 低延迟: 0"
+  log Debug "tcp low latency: 0"
 
   for dev in /sys/class/net/wlan*; do ip link set dev $(basename $dev) txqueuelen 3000; done
-  log Debug "wlan* 传输队列长度: 3000"
+  log Debug "wlan* transmit queue length: 3000"
 
   for txqueuelen in /sys/class/net/rmnet_data*; do txqueuelen_name=$(basename $txqueuelen); ip link set dev $txqueuelen_name txqueuelen 1000; done
-  log Debug "rmnet_data* 传输队列长度: 1000"
+  log Debug "rmnet_data* transmit queue length: 1000"
 
   for mtu in /sys/class/net/rmnet_data*; do mtu_name=$(basename $mtu); ip link set dev $mtu_name mtu 1500; done
   log Debug "rmnet_data* MTU: 1500"
@@ -1352,13 +1352,13 @@ bond0() {
 
 bond1() {
   sysctl -w net.ipv4.tcp_low_latency=1 >/dev/null 2>&1
-  log Debug "tcp 低延迟: 1"
+  log Debug "tcp low latency: 1"
 
   for dev in /sys/class/net/wlan*; do ip link set dev $(basename $dev) txqueuelen 4000; done
-  log Debug "wlan* 传输队列长度: 4000"
+  log Debug "wlan* transmit queue length: 4000"
 
   for txqueuelen in /sys/class/net/rmnet_data*; do txqueuelen_name=$(basename $txqueuelen); ip link set dev $txqueuelen_name txqueuelen 2000; done
-  log Debug "rmnet_data* 传输队列长度: 2000"
+  log Debug "rmnet_data* transmit queue length: 2000"
 
   for mtu in /sys/class/net/rmnet_data*; do mtu_name=$(basename $mtu); ip link set dev $mtu_name mtu 9000; done
   log Debug "rmnet_data* MTU: 9000"
@@ -1440,8 +1440,8 @@ case "$1" in
     done
     ;;
   *)
-    log Error "$0 $1 未找到"
-    log Info "用法: $0 {check|memcg|cpuset|blkio|geosub|geox|subs|upkernel [name]|upkernels [name...]|upgeox_all|upxui|upyq|upcurl|upcnip|reload|webroot|bond0|bond1|all}"
-    log Info "upkernel 支持的核心: sing-box, mihomo, mihomo_smart, xray, v2fly, hysteria"
+    log Error "$0 $1 not found"
+    log Info "Usage: $0 {check|memcg|cpuset|blkio|geosub|geox|subs|upkernel [name]|upkernels [name...]|upgeox_all|upxui|upyq|upcurl|upcnip|reload|webroot|bond0|bond1|all}"
+    log Info "upkernel supported cores: sing-box, mihomo, mihomo_smart, xray, v2fly, hysteria"
     ;;
 esac
