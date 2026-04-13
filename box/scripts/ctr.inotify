@@ -95,10 +95,10 @@ main() {
   local bssid=$(get_current_bssid)
   local wifi_ip
   
-  log_msg "--- 网络状态检查 ---"
+  log_msg "--- Проверка состояния сети ---"
   
   if [ "$wifi_status" = "wifi" ]; then
-    # 等待 IP 地址
+    # Ожидание IP-адреса
     for i in 1 2 3; do
       wifi_ip=$(get_wifi_ip)
       [ -n "$wifi_ip" ] && break
@@ -106,26 +106,26 @@ main() {
     done
     
     if [ -z "$wifi_ip" ]; then
-      log_msg "WiFi 连接中，等待 IP 地址"
+      log_msg "WiFi подключается, ожидание IP-адреса"
       exit 0
     fi
     
     log_msg "WiFi: ${ssid}, BSSID: ${bssid}, IP: ${wifi_ip}"
     save_wifi_state "$ssid" "$bssid" "$wifi_ip"
   else
-    log_msg "WiFi: 已断开"
+    log_msg "WiFi: отключён"
   fi
   
-  # 判断是否应该启用服务
+  # Определить, нужно ли включить сервис
   if should_enable_service "$wifi_status" "$ssid" "$bssid"; then
-    log_msg "策略: 启用服务"
+    log_msg "Политика: включить сервис"
     start_service
   else
-    log_msg "策略: 禁用服务"
+    log_msg "Политика: отключить сервис"
     stop_service
   fi
   
-  log_msg "完成"
+  log_msg "Готово"
 }
 
 main
