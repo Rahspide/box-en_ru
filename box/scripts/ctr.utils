@@ -107,7 +107,7 @@ is_bssid_in_list() {
   return 1
 }
 
-# 判断是否应该启用服务
+# Determine if service should be enabled
 should_enable_service() {
   local wifi_status="$1"
   local ssid="$2"

@@ -113,7 +113,7 @@ rules_add() {
 }
 
 if [ "$events" = "w" ]; then
-  # 只有 box.pid 存在时才执行原有规则
+  # Execute original rules only when box.pid exists
   if [ -f "/data/adb/box/run/box.pid" ]; then
     if with_lock_or_skip; then
       log_reset
