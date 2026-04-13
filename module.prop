@@ -1,7 +1,7 @@
 id=box_for_root
-name=Box for Magisk/KernelSU
+name=Box for Root [EN]
 version=1.2.7
 versionCode=20260404
 author=boxproxy,taamarin
 description=📦 Box for Root - Transparent proxy toolbox for Android devices 🚀 Supports clash, sing-box, v2ray, hysteria, xray and more
-updateJson=https://github.com/boxproxy/box/raw/master/update.json
+updateJson=https://github.com/Rahspide/box-en_ru/raw/translate/en/update.json
