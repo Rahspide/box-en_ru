@@ -32,7 +32,7 @@ start_service() {
   fi
   
   if [ "$boot_auto_start" = "false" ]; then
-    echo "开机自启已禁用，跳过启动核心服务。"
+    echo "Автозапуск при загрузке отключён, запуск основных служб пропущен."
     return 0
   fi
   
