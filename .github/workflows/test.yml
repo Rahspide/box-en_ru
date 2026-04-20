@@ -1,0 +1,27 @@
+name: tests
+
+on:
+  push:
+    paths-ignore:
+      - "README.md"
+      - "CHANGELOG.md"
+  pull_request:
+    paths-ignore:
+      - "README.md"
+      - "CHANGELOG.md"
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4.1.0
+
+      - name: Установка зависимостей
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y bats busybox
+
+      - name: Запуск тестов
+        run: bats --tap tests/
