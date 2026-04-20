@@ -144,7 +144,7 @@ MOCK
   [ "$status" -eq 1 ]
 }
 
-@test "is_box_custom_chain: пустая строка — не кастовая" {
+@test "is_box_custom_chain: пустая строка — не кастомная" {
   run is_box_custom_chain ""
   [ "$status" -eq 1 ]
 }
