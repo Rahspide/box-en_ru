@@ -146,3 +146,51 @@ teardown() {
   ensure_rule_append "mock_ipt" "mangle" "LOCAL_IP_V4" -d "10.0.0.1/32" -j ACCEPT
   ! grep -q "\-A LOCAL_IP_V4" "${calls_file}"
 }
+
+# ─── rules_add: корректность логирования ─────────────────────────────────────
+
+@test "rules_add: логирует предупреждение, если второе правило iptables не добавлено" {
+  local log_out="${BATS_TEST_TMPDIR}/net.log"
+  : > "${log_out}"
+
+  # Sourcing net.inotify определяет rules_add; events="" блокирует side-effect
+  getprop() { echo "12"; }
+  events=""
+  source "${REPO_ROOT}/box/scripts/net.inotify"
+
+  # Переопределяем переменные после sourcing
+  logs="${BATS_TEST_TMPDIR}/run"
+  log_file="${log_out}"
+  mkdir -p "${logs}"
+
+  # Мок: ip -4 a возвращает один адрес; ip -6 a — ничего
+  ip() {
+    case "$1" in
+      -4) echo "    inet 192.168.1.100/24 scope global wlan0" ;;
+      *)  return 0 ;;
+    esac
+  }
+
+  # Мок: записываем вызовы log_info / log_warn в файл
+  log_info() { echo "info: $*" >> "${log_file}"; }
+  log_warn() { echo "warn: $*" >> "${log_file}"; }
+
+  # Мок: ensure_chain_and_flush — ничего не делает
+  ensure_chain_and_flush() { return 0; }
+
+  # Мок: правило для mangle добавляется успешно, для nat — нет
+  ensure_rule_append() {
+    local table="$2"
+    [ "$table" = "mangle" ] && return 0 || return 1
+  }
+
+  # set +e нужен, чтобы возврат 1 из мока ensure_rule_append не прерывал
+  # подпроцесс пайпа раньше, чем будет вызван log_warn (bats использует set -e)
+  set +e
+  rules_add
+  set -e
+
+  # После исправления (|| → &&): при частичном сбое вызывается log_warn, а не log_info
+  grep -q "warn:" "${log_out}"
+  ! grep -q "info:" "${log_out}"
+}
