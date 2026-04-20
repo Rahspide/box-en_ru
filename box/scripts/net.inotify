@@ -92,7 +92,7 @@ rules_add() {
     rv1=$?
     ensure_rule_append "${iptables}" nat LOCAL_IP_V4 -d "${local_ipv4}" -j ACCEPT
     rv2=$?
-    if [ "${rv1}" = "0" ] || [ "${rv2}" = "0" ]; then
+    if [ "${rv1}" = "0" ] && [ "${rv2}" = "0" ]; then
       log_info "Local IP ${local_ipv4}, loopback prevention rules updated"
     else
       log_warn "Local IP ${local_ipv4}, loopback prevention rules update failed"
