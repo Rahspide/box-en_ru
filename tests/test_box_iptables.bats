@@ -124,22 +124,22 @@ MOCK
   [ "$status" -eq 1 ]
 }
 
-@test "is_box_custom_chain: INPUT — встроенная (не кастовая)" {
+@test "is_box_custom_chain: INPUT — встроенная (не кастомная)" {
   run is_box_custom_chain "INPUT"
   [ "$status" -eq 1 ]
 }
 
-@test "is_box_custom_chain: PREROUTING — встроенная (не кастовая)" {
+@test "is_box_custom_chain: PREROUTING — встроенная (не кастомная)" {
   run is_box_custom_chain "PREROUTING"
   [ "$status" -eq 1 ]
 }
 
-@test "is_box_custom_chain: FORWARD — встроенная (не кастовая)" {
+@test "is_box_custom_chain: FORWARD — встроенная (не кастомная)" {
   run is_box_custom_chain "FORWARD"
   [ "$status" -eq 1 ]
 }
 
-@test "is_box_custom_chain: POSTROUTING — встроенная (не кастовая)" {
+@test "is_box_custom_chain: POSTROUTING — встроенная (не кастомная)" {
   run is_box_custom_chain "POSTROUTING"
   [ "$status" -eq 1 ]
 }
